@@ -25,6 +25,7 @@ fn main() {
             ..default()
         }))
         .init_state::<GameState>()
+        .init_resource::<game_state::Score>()
         .add_message::<game_state::RestartGame>()
         .add_systems(
             Startup,
@@ -51,7 +52,10 @@ fn main() {
                 .chain()
                 .run_if(in_state(GameState::Playing)),
         )
-        .add_systems(Update, (ui::update_hp_text, ui::update_game_over_overlay))
+        .add_systems(
+            Update,
+            (ui::update_hp_text, ui::update_score_text, ui::update_game_over_overlay),
+        )
         .add_systems(
             Update,
             (
@@ -60,6 +64,7 @@ fn main() {
                 enemy::despawn_enemies_on_restart,
                 player::restart_player_on_restart,
                 enemy::reset_spawner_on_restart,
+                game_state::reset_score_on_restart,
                 game_state::resume_on_restart,
             )
                 .chain()

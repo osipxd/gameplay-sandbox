@@ -1,16 +1,21 @@
 use bevy::prelude::*;
 
-use crate::game_state::{GameState, RestartGame};
+use crate::game_state::{GameState, RestartGame, Score};
 use crate::player::{Health, Player};
 
 const UI_FONT_PATH: &str = "fonts/FiraSans-Bold.ttf";
 const INITIAL_HP_TEXT: &str = "HP: 5";
+const INITIAL_SCORE_TEXT: &str = "Score: 0";
 const GAME_OVER_TITLE: &str = "Game Over";
 const RESTART_BUTTON_LABEL: &str = "Restart";
 const HP_LABEL_PREFIX: &str = "HP";
+const SCORE_LABEL_PREFIX: &str = "Score";
 
 #[derive(Component)]
 pub(crate) struct HpText;
+
+#[derive(Component)]
+pub(crate) struct ScoreText;
 
 #[derive(Component)]
 pub(crate) struct GameOverOverlay;
@@ -44,6 +49,19 @@ pub fn spawn_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         Node {
             position_type: PositionType::Absolute,
             top: Val::Px(10.0),
+            left: Val::Px(10.0),
+            ..default()
+        },
+    ));
+
+    commands.spawn((
+        ScoreText,
+        Text::new(INITIAL_SCORE_TEXT),
+        ui_text_font(font.clone(), 30.0),
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(50.0),
             left: Val::Px(10.0),
             ..default()
         },
@@ -110,6 +128,17 @@ pub fn update_hp_text(
 
     for mut text in &mut hp_text_query {
         text.0 = hp_label.clone();
+    }
+}
+
+pub fn update_score_text(
+    score: Res<Score>,
+    mut score_text_query: Query<&mut Text, With<ScoreText>>,
+) {
+    let score_label = format!("{SCORE_LABEL_PREFIX}: {}", score.0);
+
+    for mut text in &mut score_text_query {
+        text.0 = score_label.clone();
     }
 }
 

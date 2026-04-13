@@ -19,6 +19,7 @@ This project is a personal playground to explore game development concepts:
 - Player health system
 - Game Over screen with restart button
 - Basic UI (HP display)
+- Score tracking
 
 ## Controls
 
@@ -56,7 +57,6 @@ The focus is on learning and experimenting, not building a full game.
 
 ## Possible next steps
 
-- Add score system
 - Improve enemy behavior
 - Add sound effects
 - Add visual feedback (hit effects, animations)

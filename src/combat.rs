@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use std::collections::HashSet;
 
 use crate::enemy::{self, Enemy};
-use crate::game_state::{GameState, RestartGame};
+use crate::game_state::{GameState, RestartGame, Score};
 use crate::movement::Velocity;
 use crate::player::{self, Health, Player};
 
@@ -90,6 +90,7 @@ pub fn bullet_enemy_collision(
     mut commands: Commands,
     bullets: Query<(Entity, &Transform), With<Bullet>>,
     enemies: Query<(Entity, &Transform), With<Enemy>>,
+    mut score: ResMut<Score>,
 ) {
     let mut hit_bullets = HashSet::new();
     let mut hit_enemies = HashSet::new();
@@ -123,6 +124,7 @@ pub fn bullet_enemy_collision(
 
     for enemy_entity in hit_enemies {
         commands.entity(enemy_entity).despawn();
+        score.0 += 1;
     }
 }
 

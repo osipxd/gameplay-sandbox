@@ -1,20 +1,44 @@
 use bevy::prelude::*;
 use std::collections::HashSet;
 
+use crate::camera::PlayerHit;
 use crate::enemy::{self, Enemy};
 use crate::game_state::{GameState, RestartGame, Score};
 use crate::movement::Velocity;
-use crate::player::{self, Health, Player};
+use crate::player::{self, Health, Invincibility, Player};
 
 const BULLET_SIZE: f32 = 12.0;
 const BULLET_ENEMY_HITBOX_SCALE: f32 = 0.96;
 const PLAYER_ENEMY_HITBOX_SCALE: f32 = 0.9;
+const PLAYER_ENEMY_SEPARATION_ACCEL: f32 = 120.0;
+const PLAYER_ENEMY_SEPARATION_OVERLAP: f32 = 8.0;
+const PLAYER_CONTACT_PUSH_RATE: f32 = 12.0;
+const PLAYER_HIT_KNOCKBACK_SPEED: f32 = 260.0;
+const PLAYER_HIT_PUSH_DISTANCE: f32 = 20.0;
 
 #[derive(Component)]
 pub(crate) struct Bullet;
 
 #[derive(Component)]
 pub(crate) struct DespawnAt(f64);
+
+type PlayerCollisionQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Transform,
+        &'static mut Health,
+        &'static mut Invincibility,
+    ),
+    (With<Player>, Without<Enemy>),
+>;
+
+type EnemyCollisionQuery<'w, 's> = Query<
+    'w,
+    's,
+    (&'static Transform, &'static mut Velocity),
+    (With<Enemy>, Without<Player>),
+>;
 
 fn bullet_enemy_hit_distance() -> f32 {
     (BULLET_SIZE + enemy::ENEMY_SIZE) * 0.5 * BULLET_ENEMY_HITBOX_SCALE
@@ -24,12 +48,11 @@ fn player_enemy_hit_distance() -> f32 {
     (player::PLAYER_SIZE + enemy::ENEMY_SIZE) * 0.5 * PLAYER_ENEMY_HITBOX_SCALE
 }
 
-pub fn spawn_bullet(
-    commands: &mut Commands,
-    translation: Vec3,
-    velocity: Vec2,
-    despawn_at: f64,
-) {
+fn player_enemy_separation_distance() -> f32 {
+    (player::PLAYER_SIZE + enemy::ENEMY_SIZE) * 0.5 - PLAYER_ENEMY_SEPARATION_OVERLAP
+}
+
+pub fn spawn_bullet(commands: &mut Commands, translation: Vec3, velocity: Vec2, despawn_at: f64) {
     commands.spawn((
         Bullet,
         Sprite::from_color(
@@ -57,31 +80,56 @@ pub fn despawn_bullets_on_restart(
 }
 
 pub fn player_enemy_collision(
-    mut commands: Commands,
-    mut player_query: Query<(&Transform, &mut Health), With<Player>>,
-    enemies: Query<(Entity, &Transform), With<Enemy>>,
+    time: Res<Time>,
+    mut player_query: PlayerCollisionQuery,
+    mut enemies: EnemyCollisionQuery,
+    mut player_hit_events: MessageWriter<PlayerHit>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    let Ok((player_transform, mut health)) = player_query.single_mut() else {
+    let now = time.elapsed_secs_f64();
+    let dt = time.delta_secs();
+    let Ok((mut player_transform, mut health, mut invincibility)) = player_query.single_mut()
+    else {
         return;
     };
 
-    for (enemy_entity, enemy_transform) in &enemies {
-        let distance = player_transform
-            .translation
-            .truncate()
-            .distance(enemy_transform.translation.truncate());
+    let mut can_take_damage = now >= invincibility.until;
+    let separation_distance = player_enemy_separation_distance();
 
-        if distance < player_enemy_hit_distance() {
+    for (enemy_transform, mut enemy_velocity) in &mut enemies {
+        let push_dir = (enemy_transform.translation - player_transform.translation).truncate();
+        let distance = push_dir.length();
+
+        if distance > 0.0 && distance < separation_distance {
+            let push_normal = push_dir.normalize();
+            let overlap = separation_distance - distance;
+            let enemy_push = overlap * PLAYER_ENEMY_SEPARATION_ACCEL * dt;
+            let player_push = overlap * PLAYER_CONTACT_PUSH_RATE * dt;
+
+            enemy_velocity.0 += push_normal * enemy_push;
+            player_transform.translation -= push_normal.extend(0.0) * player_push;
+        }
+
+        if can_take_damage && distance < player_enemy_hit_distance() {
+            let push_normal = push_dir.normalize();
             health.0 -= 1;
+            player_hit_events.write(PlayerHit);
 
             if health.0 <= 0 {
                 health.0 = 0;
                 next_state.set(GameState::GameOver);
-                break;
+            } else {
+                invincibility.until = player::invincibility_until(now);
             }
 
-            commands.entity(enemy_entity).despawn();
+            enemy_velocity.0 += push_normal * PLAYER_HIT_KNOCKBACK_SPEED;
+            player_transform.translation -= push_normal.extend(0.0) * PLAYER_HIT_PUSH_DISTANCE;
+
+            can_take_damage = false;
+
+            if health.0 <= 0 {
+                break;
+            }
         }
     }
 }

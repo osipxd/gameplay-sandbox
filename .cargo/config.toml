@@ -1,0 +1,4 @@
+[alias]
+dev-check = "check --features bevy_debug"
+dev-run = "run --features bevy_debug"
+dev-test = "test --features bevy_debug"

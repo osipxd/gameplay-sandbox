@@ -10,12 +10,21 @@ const PLAYER_START_HEALTH: i32 = 5;
 const PLAYER_FIRE_RATE: f64 = 0.2;
 const BULLET_SPEED: f32 = 400.0;
 const BULLET_LIFETIME_SECS: f64 = 1.5;
+const PLAYER_INVINCIBILITY_SECS: f64 = 1.0;
+const PLAYER_BASE_COLOR: Color = Color::srgb(0.3, 0.7, 0.9);
+const PLAYER_INVINCIBLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
+const PLAYER_INVINCIBILITY_BLINK_HZ: f64 = 12.0;
 
 #[derive(Component)]
 pub struct Player;
 
 #[derive(Component)]
 pub struct Health(pub i32);
+
+#[derive(Component, Default)]
+pub struct Invincibility {
+    pub until: f64,
+}
 
 #[derive(Component)]
 pub struct Weapon {
@@ -31,20 +40,19 @@ struct PlayerBundle {
     velocity: Velocity,
     weapon: Weapon,
     health: Health,
+    invincibility: Invincibility,
 }
 
 impl PlayerBundle {
     fn new() -> Self {
         Self {
             player: Player,
-            sprite: Sprite::from_color(
-                Color::srgb(0.3, 0.7, 0.9),
-                Vec2::new(PLAYER_SIZE, PLAYER_SIZE),
-            ),
+            sprite: Sprite::from_color(PLAYER_BASE_COLOR, Vec2::new(PLAYER_SIZE, PLAYER_SIZE)),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             velocity: Velocity::default(),
             weapon: Weapon::new(PLAYER_FIRE_RATE),
             health: Health(PLAYER_START_HEALTH),
+            invincibility: Invincibility::default(),
         }
     }
 }
@@ -144,4 +152,25 @@ pub fn shoot_system(
             weapon.ready_at = now + weapon.fire_rate;
         }
     }
+}
+
+pub fn update_invincibility_visuals(
+    time: Res<Time>,
+    mut players: Query<(&mut Sprite, &Invincibility), With<Player>>,
+) {
+    let now = time.elapsed_secs_f64();
+
+    for (mut sprite, invincibility) in &mut players {
+        sprite.color = if now < invincibility.until
+            && (now * PLAYER_INVINCIBILITY_BLINK_HZ).floor() as i64 % 2 == 0
+        {
+            PLAYER_INVINCIBLE_COLOR
+        } else {
+            PLAYER_BASE_COLOR
+        };
+    }
+}
+
+pub fn invincibility_until(now: f64) -> f64 {
+    now + PLAYER_INVINCIBILITY_SECS
 }

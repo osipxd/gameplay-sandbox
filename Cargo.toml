@@ -3,5 +3,8 @@ name = "gameplay-sandbox"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+bevy_debug = ["bevy/debug"]
+
 [dependencies]
-bevy = "0.18.1"
+bevy = { version = "0.18.1", default-features = false, features = ["bevy_winit", "2d_bevy_render", "ui_bevy_render"] }

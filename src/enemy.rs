@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::game_state::RestartGame;
-use crate::movement::Velocity;
+use crate::movement::{self, Velocity};
 use crate::player::Player;
 
 const ENEMY_SPEED: f32 = 120.0;
@@ -13,6 +13,9 @@ const ENEMY_SEPARATION_GAP: f32 = 10.0;
 const ENEMY_SEPARATION_DISTANCE: f32 = ENEMY_SIZE + ENEMY_SEPARATION_GAP;
 const ENEMY_SPAWN_GAP: f32 = 30.0;
 const ENEMY_SPAWN_MARGIN: f32 = ENEMY_SIZE * 0.5 + ENEMY_SPAWN_GAP;
+
+type EnemyVelocityQuery<'w, 's> =
+    Query<'w, 's, (&'static Transform, &'static mut Velocity), (With<Enemy>, Without<Player>)>;
 
 #[derive(Component)]
 pub struct Enemy;
@@ -109,23 +112,22 @@ pub fn spawn_enemies(
     ));
 }
 
-pub fn separate_enemies(time: Res<Time>, mut enemies: Query<(&Transform, &mut Velocity), With<Enemy>>) {
+pub fn separate_enemies(time: Res<Time>, mut enemies: EnemyVelocityQuery) {
     let dt = time.delta_secs();
     let mut combinations = enemies.iter_combinations_mut();
 
     while let Some([(transform_a, mut velocity_a), (transform_b, mut velocity_b)]) =
         combinations.fetch_next()
     {
-        let diff = (transform_a.translation - transform_b.translation).truncate();
-        let distance = diff.length();
-
-        if distance > 0.0 && distance < ENEMY_SEPARATION_DISTANCE {
-            let push_dir = diff.normalize();
-            let strength = (ENEMY_SEPARATION_DISTANCE - distance) * ENEMY_SEPARATION_ACCEL * dt;
-
-            velocity_a.0 += push_dir * strength;
-            velocity_b.0 -= push_dir * strength;
-        }
+        movement::apply_separation(
+            transform_a.translation,
+            &mut velocity_a,
+            transform_b.translation,
+            &mut velocity_b,
+            ENEMY_SEPARATION_DISTANCE,
+            ENEMY_SEPARATION_ACCEL,
+            dt,
+        );
     }
 }
 

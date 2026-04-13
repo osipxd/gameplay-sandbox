@@ -98,15 +98,13 @@ pub fn spawn_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ..default()
                 },
                 BackgroundColor(Color::srgb(0.2, 0.6, 0.2)),
-                children![
-                    (
-                        Text::new(RESTART_BUTTON_LABEL),
-                        ui_text_font(font, 32.0),
-                        TextColor(Color::WHITE),
-                    )
-                ]
+                children![(
+                    Text::new(RESTART_BUTTON_LABEL),
+                    ui_text_font(font, 32.0),
+                    TextColor(Color::WHITE),
+                )]
             )
-        ]
+        ],
     ));
 }
 

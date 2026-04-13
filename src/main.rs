@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
 
+mod camera;
 mod combat;
 mod enemy;
 mod game_state;
@@ -26,11 +27,12 @@ fn main() {
         }))
         .init_state::<GameState>()
         .init_resource::<game_state::Score>()
+        .add_message::<camera::PlayerHit>()
         .add_message::<game_state::RestartGame>()
         .add_systems(
             Startup,
             (
-                spawn_camera,
+                camera::spawn_camera,
                 player::spawn_initial_player,
                 enemy::setup_enemy_spawner,
                 ui::spawn_ui,
@@ -54,7 +56,20 @@ fn main() {
         )
         .add_systems(
             Update,
-            (ui::update_hp_text, ui::update_score_text, ui::update_game_over_overlay),
+            (
+                player::update_invincibility_visuals,
+                ui::update_hp_text,
+                ui::update_score_text,
+                ui::update_game_over_overlay,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                camera::start_screen_shake.after(combat::player_enemy_collision),
+                camera::apply_screen_shake,
+            )
+                .chain(),
         )
         .add_systems(
             Update,
@@ -71,8 +86,4 @@ fn main() {
                 .run_if(in_state(GameState::GameOver)),
         )
         .run();
-}
-
-fn spawn_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
 }

@@ -1,9 +1,10 @@
 use bevy::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::camera::PlayerHit;
+use crate::effects::{EnemyDied, PlayerDied};
 use crate::enemy::{self, Enemy};
-use crate::game_state::{GameState, RestartGame, Score};
+use crate::game_state::{RestartGame, Score};
 use crate::movement::Velocity;
 use crate::player::{self, Health, Invincibility, Player};
 
@@ -26,6 +27,7 @@ type PlayerCollisionQuery<'w, 's> = Query<
     'w,
     's,
     (
+        Entity,
         &'static mut Transform,
         &'static mut Health,
         &'static mut Invincibility,
@@ -33,12 +35,8 @@ type PlayerCollisionQuery<'w, 's> = Query<
     (With<Player>, Without<Enemy>),
 >;
 
-type EnemyCollisionQuery<'w, 's> = Query<
-    'w,
-    's,
-    (&'static Transform, &'static mut Velocity),
-    (With<Enemy>, Without<Player>),
->;
+type EnemyCollisionQuery<'w, 's> =
+    Query<'w, 's, (&'static Transform, &'static mut Velocity), (With<Enemy>, Without<Player>)>;
 
 fn bullet_enemy_hit_distance() -> f32 {
     (BULLET_SIZE + enemy::ENEMY_SIZE) * 0.5 * BULLET_ENEMY_HITBOX_SCALE
@@ -53,13 +51,16 @@ fn player_enemy_separation_distance() -> f32 {
 }
 
 pub fn spawn_bullet(commands: &mut Commands, translation: Vec3, velocity: Vec2, despawn_at: f64) {
+    let mut bullet_translation = translation;
+    bullet_translation.z = crate::BULLET_Z;
+
     commands.spawn((
         Bullet,
         Sprite::from_color(
             Color::srgb(1.0, 0.9, 0.2),
             Vec2::new(BULLET_SIZE, BULLET_SIZE),
         ),
-        Transform::from_translation(translation),
+        Transform::from_translation(bullet_translation),
         Velocity(velocity),
         DespawnAt(despawn_at),
     ));
@@ -80,15 +81,17 @@ pub fn despawn_bullets_on_restart(
 }
 
 pub fn player_enemy_collision(
+    mut commands: Commands,
     time: Res<Time>,
     mut player_query: PlayerCollisionQuery,
     mut enemies: EnemyCollisionQuery,
     mut player_hit_events: MessageWriter<PlayerHit>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut player_died_events: MessageWriter<PlayerDied>,
 ) {
     let now = time.elapsed_secs_f64();
     let dt = time.delta_secs();
-    let Ok((mut player_transform, mut health, mut invincibility)) = player_query.single_mut()
+    let Ok((player_entity, mut player_transform, mut health, mut invincibility)) =
+        player_query.single_mut()
     else {
         return;
     };
@@ -117,7 +120,11 @@ pub fn player_enemy_collision(
 
             if health.0 <= 0 {
                 health.0 = 0;
-                next_state.set(GameState::GameOver);
+                player_died_events.write(PlayerDied {
+                    translation: player_transform.translation,
+                    burst_direction: Vec2::ZERO,
+                });
+                commands.entity(player_entity).despawn();
             } else {
                 invincibility.until = player::invincibility_until(now);
             }
@@ -136,14 +143,16 @@ pub fn player_enemy_collision(
 
 pub fn bullet_enemy_collision(
     mut commands: Commands,
-    bullets: Query<(Entity, &Transform), With<Bullet>>,
+    bullets: Query<(Entity, &Transform, &Velocity), With<Bullet>>,
     enemies: Query<(Entity, &Transform), With<Enemy>>,
+    mut enemy_died_events: MessageWriter<EnemyDied>,
     mut score: ResMut<Score>,
 ) {
     let mut hit_bullets = HashSet::new();
     let mut hit_enemies = HashSet::new();
+    let mut enemy_burst_directions = HashMap::new();
 
-    for (bullet_entity, bullet_transform) in &bullets {
+    for (bullet_entity, bullet_transform, bullet_velocity) in &bullets {
         if hit_bullets.contains(&bullet_entity) {
             continue;
         }
@@ -161,6 +170,7 @@ pub fn bullet_enemy_collision(
             if distance < bullet_enemy_hit_distance() {
                 hit_bullets.insert(bullet_entity);
                 hit_enemies.insert(enemy_entity);
+                enemy_burst_directions.insert(enemy_entity, bullet_velocity.0.normalize_or_zero());
                 break;
             }
         }
@@ -171,6 +181,15 @@ pub fn bullet_enemy_collision(
     }
 
     for enemy_entity in hit_enemies {
+        if let Ok((_, enemy_transform)) = enemies.get(enemy_entity) {
+            enemy_died_events.write(EnemyDied {
+                translation: enemy_transform.translation,
+                burst_direction: enemy_burst_directions
+                    .get(&enemy_entity)
+                    .copied()
+                    .unwrap_or(Vec2::ZERO),
+            });
+        }
         commands.entity(enemy_entity).despawn();
         score.0 += 1;
     }

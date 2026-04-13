@@ -9,6 +9,7 @@ const ENEMY_SPEED: f32 = 120.0;
 const ENEMY_STEERING_ACCEL: f32 = 480.0;
 const ENEMY_SEPARATION_ACCEL: f32 = 240.0;
 pub(crate) const ENEMY_SIZE: f32 = 40.0;
+pub(crate) const ENEMY_BASE_COLOR: Color = Color::srgb(0.9, 0.2, 0.3);
 const ENEMY_SEPARATION_GAP: f32 = 10.0;
 const ENEMY_SEPARATION_DISTANCE: f32 = ENEMY_SIZE + ENEMY_SEPARATION_GAP;
 const ENEMY_SPAWN_GAP: f32 = 30.0;
@@ -103,11 +104,8 @@ pub fn spawn_enemies(
 
     commands.spawn((
         Enemy,
-        Sprite::from_color(
-            Color::srgb(0.9, 0.2, 0.3),
-            Vec2::new(ENEMY_SIZE, ENEMY_SIZE),
-        ),
-        Transform::from_xyz(x, y, 0.0),
+        Sprite::from_color(ENEMY_BASE_COLOR, Vec2::new(ENEMY_SIZE, ENEMY_SIZE)),
+        Transform::from_xyz(x, y, crate::ENEMY_Z),
         Velocity(Vec2::ZERO),
     ));
 }

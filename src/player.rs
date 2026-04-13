@@ -7,11 +7,11 @@ use crate::movement::Velocity;
 const PLAYER_SPEED: f32 = 200.0;
 pub(crate) const PLAYER_SIZE: f32 = 50.0;
 const PLAYER_START_HEALTH: i32 = 5;
-const PLAYER_FIRE_RATE: f64 = 0.2;
+const PLAYER_FIRE_RATE: f64 = 0.3;
 const BULLET_SPEED: f32 = 400.0;
 const BULLET_LIFETIME_SECS: f64 = 1.5;
 const PLAYER_INVINCIBILITY_SECS: f64 = 1.0;
-const PLAYER_BASE_COLOR: Color = Color::srgb(0.3, 0.7, 0.9);
+pub(crate) const PLAYER_BASE_COLOR: Color = Color::srgb(0.3, 0.7, 0.9);
 const PLAYER_INVINCIBLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PLAYER_INVINCIBILITY_BLINK_HZ: f64 = 12.0;
 
@@ -48,7 +48,7 @@ impl PlayerBundle {
         Self {
             player: Player,
             sprite: Sprite::from_color(PLAYER_BASE_COLOR, Vec2::new(PLAYER_SIZE, PLAYER_SIZE)),
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+            transform: Transform::from_xyz(0.0, 0.0, crate::PLAYER_Z),
             velocity: Velocity::default(),
             weapon: Weapon::new(PLAYER_FIRE_RATE),
             health: Health(PLAYER_START_HEALTH),

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::game_state::{GameState, RestartGame, Score};
 use crate::player::{Health, Player};
 
-const UI_FONT_PATH: &str = "fonts/FiraSans-Bold.ttf";
+pub(crate) const UI_FONT_PATH: &str = "fonts/FiraSans-Bold.ttf";
 const INITIAL_HP_TEXT: &str = "HP: 5";
 const INITIAL_SCORE_TEXT: &str = "Score: 0";
 const GAME_OVER_TITLE: &str = "Game Over";

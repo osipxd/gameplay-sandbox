@@ -11,6 +11,7 @@ const PLAYER_FIRE_RATE_SECS: f32 = 0.3;
 pub(crate) const BULLET_SPEED: f32 = 400.0;
 const BULLET_LIFETIME_SECS: f32 = 1.5;
 const BULLET_PLAYER_VELOCITY_INHERITANCE: f32 = 0.2;
+const PLAYER_SHOOT_DIRECTION_FACING_BLEND: f32 = 0.3;
 const PLAYER_RECOIL_STRENGTH_PCT: f32 = 0.4;
 const PLAYER_IMPULSE_DAMPING_RATE: f32 = 8.0;
 const PLAYER_INVINCIBILITY_SECS: f32 = 1.0;
@@ -50,6 +51,7 @@ type PlayerShootQuery<'w, 's> = Query<
     's,
     (
         &'static PhysicalTranslation,
+        &'static Transform,
         &'static InputVelocity,
         &'static mut Weapon,
         &'static mut Impulse,
@@ -259,14 +261,19 @@ pub fn shoot_system(
     time: Res<Time<Fixed>>,
     mut player_query: PlayerShootQuery,
 ) {
-    let bullet_dir = shooting_input_direction(&keyboard);
+    let shoot_input_direction = shooting_input_direction(&keyboard);
+    let wants_to_shoot = shoot_input_direction != Vec2::ZERO;
 
-    for (translation, input_velocity, mut weapon, mut impulse, mut shoot_squash) in
+    for (translation, transform, input_velocity, mut weapon, mut impulse, mut shoot_squash) in
         &mut player_query
     {
         weapon.tick(time.delta());
 
-        if bullet_dir != Vec2::ZERO && weapon.can_fire() {
+        if wants_to_shoot && weapon.can_fire() {
+            let bullet_dir = shoot_direction(
+                shoot_input_direction,
+                player_forward_direction(transform.rotation),
+            );
             let bullet_velocity =
                 bullet_dir * BULLET_SPEED + input_velocity.0 * BULLET_PLAYER_VELOCITY_INHERITANCE;
 
@@ -292,6 +299,16 @@ fn player_color(invincibility: &Invincibility, shoot_squash: &ShootSquash) -> Co
     };
 
     base_color.mix(&Color::WHITE, shoot_squash.flash_mix())
+}
+
+fn player_forward_direction(rotation: Quat) -> Vec2 {
+    (rotation * Vec3::X).truncate().normalize_or_zero()
+}
+
+fn shoot_direction(input_direction: Vec2, facing_direction: Vec2) -> Vec2 {
+    input_direction
+        .lerp(facing_direction, PLAYER_SHOOT_DIRECTION_FACING_BLEND)
+        .normalize_or_zero()
 }
 
 fn movement_input_direction(keyboard: &ButtonInput<KeyCode>) -> Vec2 {

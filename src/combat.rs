@@ -105,13 +105,12 @@ pub fn despawn_bullets_on_restart(
 
 pub fn player_enemy_collision(
     mut commands: Commands,
-    time: Res<Time>,
+    time: Res<Time<Fixed>>,
     mut player_query: PlayerCollisionQuery,
     mut enemies: EnemyCollisionQuery,
     mut player_hit_events: MessageWriter<PlayerHit>,
     mut player_died_events: MessageWriter<PlayerDied>,
 ) {
-    let now = time.elapsed_secs_f64();
     let dt = time.delta_secs();
     let Ok((player_entity, mut player_transform, mut health, mut invincibility, mut impulse)) =
         player_query.single_mut()
@@ -119,7 +118,8 @@ pub fn player_enemy_collision(
         return;
     };
 
-    let mut can_take_damage = now >= invincibility.until;
+    invincibility.tick(time.delta());
+    let mut can_take_damage = !invincibility.is_active();
     let separation_distance = player_enemy_separation_distance();
 
     for (enemy_transform, mut enemy_velocity) in &mut enemies {
@@ -149,7 +149,7 @@ pub fn player_enemy_collision(
                 });
                 commands.entity(player_entity).despawn();
             } else {
-                invincibility.until = player::invincibility_until(now);
+                invincibility.start();
             }
 
             enemy_velocity.0 += push_normal * PLAYER_HIT_KNOCKBACK_SPEED;

@@ -80,7 +80,6 @@ fn main() {
             Update,
             (
                 player::update_player_visuals,
-                player::update_invincibility_visuals,
                 ui::update_hp_text,
                 ui::update_score_text,
                 ui::update_game_over_overlay,

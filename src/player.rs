@@ -1,4 +1,4 @@
-use bevy::{math::StableInterpolate, prelude::*};
+use bevy::{color::Mix, math::StableInterpolate, prelude::*};
 
 use crate::combat;
 use crate::game_state::RestartGame;
@@ -7,18 +7,19 @@ use crate::movement::{Impulse, InputVelocity, KinematicBodyBundle, PhysicalTrans
 const PLAYER_SPEED: f32 = 200.0;
 pub(crate) const PLAYER_SIZE: f32 = 50.0;
 const PLAYER_START_HEALTH: i32 = 5;
-const PLAYER_FIRE_RATE: f64 = 0.3;
+const PLAYER_FIRE_RATE_SECS: f32 = 0.3;
 pub(crate) const BULLET_SPEED: f32 = 400.0;
 const BULLET_LIFETIME_SECS: f32 = 1.5;
 const BULLET_PLAYER_VELOCITY_INHERITANCE: f32 = 0.2;
 const PLAYER_RECOIL_STRENGTH_PCT: f32 = 0.4;
 const PLAYER_IMPULSE_DAMPING_RATE: f32 = 8.0;
-const PLAYER_INVINCIBILITY_SECS: f64 = 1.0;
+const PLAYER_INVINCIBILITY_SECS: f32 = 1.0;
 const PLAYER_ROTATION_LERP_RATE: f32 = 14.0;
 const PLAYER_SHOOT_SQUASH_SECS: f32 = 0.18;
 const PLAYER_SHOOT_SQUASH_X_MIN: f32 = 0.9;
 const PLAYER_SHOOT_SQUASH_Y_MAX: f32 = 1.06;
 const PLAYER_SHOOT_SQUASH_SHRINK_PCT: f32 = 0.25;
+const PLAYER_SHOOT_FLASH_MIX: f32 = 0.45;
 pub(crate) const PLAYER_BASE_COLOR: Color = Color::srgb(0.3, 0.7, 0.9);
 const PLAYER_INVINCIBLE_COLOR: Color = Color::srgb(1.0, 1.0, 1.0);
 const PLAYER_INVINCIBILITY_BLINK_HZ: f64 = 12.0;
@@ -29,15 +30,14 @@ pub struct Player;
 #[derive(Component)]
 pub struct Health(pub i32);
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub struct Invincibility {
-    pub until: f64,
+    timer: Timer,
 }
 
 #[derive(Component)]
 pub struct Weapon {
-    fire_rate: f64,
-    ready_at: f64,
+    cooldown: Timer,
 }
 
 #[derive(Component)]
@@ -78,7 +78,7 @@ impl PlayerBundle {
             sprite: Sprite::from_color(PLAYER_BASE_COLOR, Vec2::new(PLAYER_SIZE, PLAYER_SIZE)),
             body: KinematicBodyBundle::new(Vec3::new(0.0, 0.0, crate::PLAYER_Z), Vec2::ZERO),
             input_velocity: InputVelocity::default(),
-            weapon: Weapon::new(PLAYER_FIRE_RATE),
+            weapon: Weapon::new(PLAYER_FIRE_RATE_SECS),
             health: Health(PLAYER_START_HEALTH),
             invincibility: Invincibility::default(),
             impulse: Impulse::new(PLAYER_IMPULSE_DAMPING_RATE),
@@ -88,11 +88,48 @@ impl PlayerBundle {
 }
 
 impl Weapon {
-    fn new(fire_rate: f64) -> Self {
-        Self {
-            fire_rate,
-            ready_at: 0.0,
-        }
+    fn new(fire_rate_secs: f32) -> Self {
+        let mut cooldown = Timer::from_seconds(fire_rate_secs, TimerMode::Once);
+        cooldown.set_elapsed(cooldown.duration());
+        Self { cooldown }
+    }
+
+    fn tick(&mut self, delta: std::time::Duration) {
+        self.cooldown.tick(delta);
+    }
+
+    fn can_fire(&self) -> bool {
+        self.cooldown.is_finished()
+    }
+
+    fn trigger(&mut self) {
+        self.cooldown.reset();
+    }
+}
+
+impl Default for Invincibility {
+    fn default() -> Self {
+        let mut timer = Timer::from_seconds(PLAYER_INVINCIBILITY_SECS, TimerMode::Once);
+        timer.set_elapsed(timer.duration());
+        Self { timer }
+    }
+}
+
+impl Invincibility {
+    pub fn tick(&mut self, delta: std::time::Duration) {
+        self.timer.tick(delta);
+    }
+
+    pub fn start(&mut self) {
+        self.timer.reset();
+    }
+
+    pub fn is_active(&self) -> bool {
+        !self.timer.is_finished()
+    }
+
+    fn blink_on(&self) -> bool {
+        (self.timer.elapsed_secs_f64() * PLAYER_INVINCIBILITY_BLINK_HZ).floor() as i64 % 2 == 0
     }
 }
 
@@ -132,6 +169,15 @@ impl ShootSquash {
                 1.0,
             )
         }
+    }
+
+    fn flash_mix(&self) -> f32 {
+        if self.timer.is_finished() {
+            return 0.0;
+        }
+
+        PLAYER_SHOOT_FLASH_MIX
+            * (1.0 - EaseFunction::QuadraticIn.sample_clamped(self.timer.fraction()))
     }
 }
 
@@ -173,14 +219,24 @@ pub fn control_player(
 pub fn update_player_visuals(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut players: Query<(&mut Transform, &InputVelocity, &mut ShootSquash), With<Player>>,
+    mut players: Query<
+        (
+            &mut Transform,
+            &mut Sprite,
+            &InputVelocity,
+            &Invincibility,
+            &mut ShootSquash,
+        ),
+        With<Player>,
+    >,
 ) {
     let aim_direction = shooting_input_direction(&keyboard);
     let dt = time.delta_secs();
-
-    for (mut transform, input_velocity, mut shoot_squash) in &mut players {
+    for (mut transform, mut sprite, input_velocity, invincibility, mut shoot_squash) in &mut players
+    {
         shoot_squash.timer.tick(time.delta());
         transform.scale = shoot_squash.scale_at();
+        sprite.color = player_color(invincibility, &shoot_squash);
 
         let facing_direction = if aim_direction != Vec2::ZERO {
             aim_direction
@@ -200,16 +256,17 @@ pub fn update_player_visuals(
 pub fn shoot_system(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
+    time: Res<Time<Fixed>>,
     mut player_query: PlayerShootQuery,
 ) {
-    let now = time.elapsed_secs_f64();
     let bullet_dir = shooting_input_direction(&keyboard);
 
     for (translation, input_velocity, mut weapon, mut impulse, mut shoot_squash) in
         &mut player_query
     {
-        if bullet_dir != Vec2::ZERO && now >= weapon.ready_at {
+        weapon.tick(time.delta());
+
+        if bullet_dir != Vec2::ZERO && weapon.can_fire() {
             let bullet_velocity =
                 bullet_dir * BULLET_SPEED + input_velocity.0 * BULLET_PLAYER_VELOCITY_INHERITANCE;
 
@@ -222,30 +279,19 @@ pub fn shoot_system(
 
             impulse.add(-bullet_dir * (BULLET_SPEED * PLAYER_RECOIL_STRENGTH_PCT));
             shoot_squash.restart();
-            weapon.ready_at = now + weapon.fire_rate;
+            weapon.trigger();
         }
     }
 }
 
-pub fn update_invincibility_visuals(
-    time: Res<Time>,
-    mut players: Query<(&mut Sprite, &Invincibility), With<Player>>,
-) {
-    let now = time.elapsed_secs_f64();
+fn player_color(invincibility: &Invincibility, shoot_squash: &ShootSquash) -> Color {
+    let base_color = if invincibility.is_active() && invincibility.blink_on() {
+        PLAYER_INVINCIBLE_COLOR
+    } else {
+        PLAYER_BASE_COLOR
+    };
 
-    for (mut sprite, invincibility) in &mut players {
-        sprite.color = if now < invincibility.until
-            && (now * PLAYER_INVINCIBILITY_BLINK_HZ).floor() as i64 % 2 == 0
-        {
-            PLAYER_INVINCIBLE_COLOR
-        } else {
-            PLAYER_BASE_COLOR
-        };
-    }
-}
-
-pub fn invincibility_until(now: f64) -> f64 {
-    now + PLAYER_INVINCIBILITY_SECS
+    base_color.mix(&Color::WHITE, shoot_squash.flash_mix())
 }
 
 fn movement_input_direction(keyboard: &ButtonInput<KeyCode>) -> Vec2 {

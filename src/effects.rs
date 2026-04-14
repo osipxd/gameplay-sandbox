@@ -107,6 +107,7 @@ pub enum EffectsConfigLoaderError {
 pub struct EnemyDied {
     pub translation: Vec3,
     pub burst_direction: Vec2,
+    pub particle_speed_multiplier: f32,
 }
 
 #[derive(Message)]
@@ -298,6 +299,7 @@ fn spawn_death_particles(
     config: &DeathParticlesConfig,
     translation: Vec3,
     burst_direction: Vec2,
+    speed_multiplier: f32,
     style: &ParticleStyle,
 ) {
     let extra_count = config.random_extra_count(rng);
@@ -313,7 +315,7 @@ fn spawn_death_particles(
     for row in 0..config.core_grid_size {
         for col in 0..config.core_grid_size {
             let offset = core_fragment_offset(col, row, style.source_size, config.core_grid_size);
-            burst.spawn_core_fragment(commands, rng, offset);
+            burst.spawn_core_fragment(commands, rng, offset, speed_multiplier);
         }
     }
 
@@ -325,13 +327,26 @@ fn spawn_death_particles(
             EXTRA_PARTICLE_SPAWN_SIDE_FACTOR,
             rng,
         );
-        burst.spawn_extra_fragment(commands, rng, offset, size);
+        burst.spawn_extra_fragment(commands, rng, offset, size, speed_multiplier);
     }
 }
 
 impl BurstSpec<'_> {
-    fn spawn_core_fragment(&self, commands: &mut Commands, rng: &mut RandomSource, offset: Vec2) {
-        self.spawn_particle(commands, rng, offset, self.core_size, &self.config.large);
+    fn spawn_core_fragment(
+        &self,
+        commands: &mut Commands,
+        rng: &mut RandomSource,
+        offset: Vec2,
+        speed_multiplier: f32,
+    ) {
+        self.spawn_particle(
+            commands,
+            rng,
+            offset,
+            self.core_size,
+            &self.config.large,
+            speed_multiplier,
+        );
     }
 
     fn spawn_extra_fragment(
@@ -340,8 +355,16 @@ impl BurstSpec<'_> {
         rng: &mut RandomSource,
         offset: Vec2,
         size: f32,
+        speed_multiplier: f32,
     ) {
-        self.spawn_particle(commands, rng, offset, size, &self.config.small);
+        self.spawn_particle(
+            commands,
+            rng,
+            offset,
+            size,
+            &self.config.small,
+            speed_multiplier,
+        );
     }
 
     fn spawn_particle(
@@ -351,12 +374,13 @@ impl BurstSpec<'_> {
         offset: Vec2,
         size: f32,
         fragment: &FragmentConfig,
+        speed_multiplier: f32,
     ) {
         let direction = self.fragment_direction(offset, rng, fragment.direction_jitter);
         commands.spawn((
             DeathParticle {
                 lifetime: Timer::from_seconds(fragment.random_ttl_secs(rng), TimerMode::Once),
-                velocity: direction * fragment.random_speed(rng),
+                velocity: direction * fragment.random_speed(rng) * speed_multiplier,
                 end_scale: fragment.random_end_scale(rng),
             },
             Sprite::from_color(
@@ -477,6 +501,7 @@ pub fn spawn_enemy_death_effects(
             &effects_config.death_particles,
             death.translation,
             death.burst_direction,
+            death.particle_speed_multiplier,
             &particle_style,
         );
         let drift_x = effects_config.score_popup.random_drift_x(&mut rng);
@@ -532,6 +557,7 @@ pub fn handle_player_death(
             &effects_config.death_particles,
             death.translation,
             death.burst_direction,
+            1.0,
             &particle_style,
         );
     }

@@ -16,6 +16,8 @@ const PLAYER_ENEMY_SEPARATION_OVERLAP: f32 = 8.0;
 const PLAYER_CONTACT_PUSH_RATE: f32 = 12.0;
 const PLAYER_HIT_KNOCKBACK_SPEED: f32 = 260.0;
 const PLAYER_HIT_PUSH_DISTANCE: f32 = 20.0;
+const PARTICLE_SPEED_MULTIPLIER_MIN: f32 = 0.7;
+const PARTICLE_SPEED_MULTIPLIER_MAX: f32 = 1.3;
 
 #[derive(Component)]
 pub(crate) struct Bullet;
@@ -171,6 +173,7 @@ pub fn bullet_enemy_collision(
     let mut hit_bullets = HashSet::new();
     let mut hit_enemies = HashSet::new();
     let mut enemy_burst_directions = HashMap::new();
+    let mut enemy_particle_speed_multipliers = HashMap::new();
 
     for (bullet_entity, bullet_transform, bullet_velocity) in &bullets {
         if hit_bullets.contains(&bullet_entity) {
@@ -191,6 +194,11 @@ pub fn bullet_enemy_collision(
                 hit_bullets.insert(bullet_entity);
                 hit_enemies.insert(enemy_entity);
                 enemy_burst_directions.insert(enemy_entity, bullet_velocity.0.normalize_or_zero());
+                enemy_particle_speed_multipliers.insert(
+                    enemy_entity,
+                    (bullet_velocity.0.length() / player::BULLET_SPEED)
+                        .clamp(PARTICLE_SPEED_MULTIPLIER_MIN, PARTICLE_SPEED_MULTIPLIER_MAX),
+                );
                 break;
             }
         }
@@ -208,6 +216,10 @@ pub fn bullet_enemy_collision(
                     .get(&enemy_entity)
                     .copied()
                     .unwrap_or(Vec2::ZERO),
+                particle_speed_multiplier: enemy_particle_speed_multipliers
+                    .get(&enemy_entity)
+                    .copied()
+                    .unwrap_or(1.0),
             });
         }
         commands.entity(enemy_entity).despawn();

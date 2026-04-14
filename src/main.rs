@@ -27,6 +27,8 @@ fn main() {
                 title: "Playground".into(),
                 resolution: WindowResolution::new(WIDTH, HEIGHT),
                 resizable: false,
+                canvas: Some("#bevy".into()),
+                fit_canvas_to_parent: true,
                 ..default()
             }),
             ..default()

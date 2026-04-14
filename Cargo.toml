@@ -8,3 +8,6 @@ bevy_debug = ["bevy/debug"]
 
 [dependencies]
 bevy = { version = "0.18.1", default-features = false, features = ["bevy_winit", "2d_bevy_render", "ui_bevy_render"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+bevy = { version = "0.18.1", default-features = false, features = ["web", "webgl2"] }

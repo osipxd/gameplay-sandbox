@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Gameplay Sandbox</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="./index.html">Gameplay Sandbox</a>
+      <nav class="nav">
+        <a href="./index.html">Home</a>
+        <a href="./play.html">Play</a>
+      </nav>
+    </header>
+
+    <main class="landing">
+      <section class="hero">
+        <p class="eyebrow">Rust + Bevy experiment</p>
+        <h1>Small top-down shooter, built as a playground for game feel.</h1>
+        <p class="hero-copy">
+          This project explores ECS, enemy steering, hit feedback, browser builds, and lightweight
+          visual effects without pulling in a full authored VFX stack.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="./play.html">Play in Browser</a>
+          <a class="button button-secondary" href="https://bevyengine.org/">Built with Bevy</a>
+        </div>
+      </section>
+
+      <section class="panel-grid">
+        <article class="panel">
+          <h2>Features</h2>
+          <ul class="feature-list">
+            <li>WASD movement and arrow-key shooting</li>
+            <li>Enemy follow + separation behavior</li>
+            <li>Invincibility frames and hit knockback</li>
+            <li>Screen shake, death fragments, score popups</li>
+            <li>HUD, restart flow, and score tracking</li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <h2>Controls</h2>
+          <dl class="controls">
+            <div>
+              <dt>Move</dt>
+              <dd>W A S D</dd>
+            </div>
+            <div>
+              <dt>Shoot</dt>
+              <dd>Arrow keys</dd>
+            </div>
+            <div>
+              <dt>Goal</dt>
+              <dd>Stay alive and push score higher</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="panel panel-wide">
+          <h2>About</h2>
+          <p>
+            The game is intentionally small. It is a sandbox for iterating on movement, collisions,
+            hit response, UI, and browser deployment rather than a content-heavy production game.
+          </p>
+          <p>
+            The browser version is fully client-side: static HTML, CSS, JavaScript glue, a wasm
+            binary, and copied assets. No backend is involved.
+          </p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

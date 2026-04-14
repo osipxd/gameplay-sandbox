@@ -50,6 +50,29 @@ For local debugging with Bevy's extra debug feature enabled:
 cargo dev-run
 ```
 
+## Running in the browser
+
+Install the required wasm tooling once:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli
+```
+
+Build the web bundle:
+
+```bash
+./scripts/build-web.sh
+```
+
+Serve it locally:
+
+```bash
+./scripts/serve-web.sh
+```
+
+Then open [http://localhost:8000](http://localhost:8000).
+
 ## Project Structure
 
 - `main.rs` – app wiring and schedule setup
@@ -61,6 +84,12 @@ cargo dev-run
 - `effects.rs` – death particles, score popups, death sequence timing
 - `movement.rs` – shared velocity-based movement
 - `ui.rs` – HUD and Game Over overlay
+- `web/index.html` – landing page, controls, and project overview
+- `web/play.html` – in-browser game page
+- `web/style.css` – shared site styles
+- `web/game/` – generated wasm bundle output
+- `scripts/build-web.sh` – wasm build and asset copy script
+- `scripts/serve-web.sh` – local static server for the web build
 
 ## Goals
 

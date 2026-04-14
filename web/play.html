@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Play | Gameplay Sandbox</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="site-shell site-shell-game">
+    <header class="topbar">
+      <a class="brand" href="./index.html">Gameplay Sandbox</a>
+      <nav class="nav">
+        <a href="./index.html">Home</a>
+        <a href="./play.html">Play</a>
+      </nav>
+    </header>
+
+    <main class="game-page">
+      <aside class="game-sidebar panel">
+        <p class="eyebrow">Live build</p>
+        <h1>Play</h1>
+        <p>
+          Run the current browser build directly in-page. Click the game area first if keyboard
+          input does not register immediately.
+        </p>
+        <dl class="controls">
+          <div>
+            <dt>Move</dt>
+            <dd>W A S D</dd>
+          </div>
+          <div>
+            <dt>Shoot</dt>
+            <dd>Arrow keys</dd>
+          </div>
+        </dl>
+      </aside>
+
+      <section class="game-stage">
+        <canvas id="bevy"></canvas>
+      </section>
+    </main>
+
+    <script type="module">
+      import init from "./game/gameplay_sandbox.js";
+
+      init();
+    </script>
+  </body>
+</html>

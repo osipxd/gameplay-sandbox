@@ -1,12 +1,13 @@
-use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+use bevy::{math::StableInterpolate, prelude::*};
 
 use crate::game_state::RestartGame;
 use crate::movement::{self, Velocity};
 use crate::player::Player;
 
 const ENEMY_SPEED: f32 = 120.0;
-const ENEMY_STEERING_ACCEL: f32 = 480.0;
+const ENEMY_STEERING_LERP_RATE: f32 = 6.0;
+const ENEMY_ROTATION_LERP_RATE: f32 = 12.0;
 const ENEMY_SEPARATION_ACCEL: f32 = 240.0;
 pub(crate) const ENEMY_SIZE: f32 = 40.0;
 pub(crate) const ENEMY_BASE_COLOR: Color = Color::srgb(0.9, 0.2, 0.3);
@@ -131,7 +132,7 @@ pub fn separate_enemies(time: Res<Time>, mut enemies: EnemyVelocityQuery) {
 
 pub fn enemy_follow_player(
     time: Res<Time>,
-    mut enemies: Query<(&Transform, &mut Velocity), With<Enemy>>,
+    mut enemies: Query<(&mut Transform, &mut Velocity), With<Enemy>>,
     player: Query<&Transform, (With<Player>, Without<Enemy>)>,
 ) {
     let dt = time.delta_secs();
@@ -139,19 +140,19 @@ pub fn enemy_follow_player(
         return;
     };
 
-    for (enemy_transform, mut velocity) in &mut enemies {
+    for (mut enemy_transform, mut velocity) in &mut enemies {
         let dir = (player_transform.translation - enemy_transform.translation).truncate();
 
         if dir.length() > 0.0 {
             let desired = dir.normalize() * ENEMY_SPEED;
-            let delta = desired - velocity.0;
-            let max_change = ENEMY_STEERING_ACCEL * dt;
+            let target_rotation = Quat::from_rotation_z(dir.y.atan2(dir.x));
 
-            velocity.0 += if delta.length() > max_change {
-                delta.normalize() * max_change
-            } else {
-                delta
-            };
+            enemy_transform
+                .rotation
+                .smooth_nudge(&target_rotation, ENEMY_ROTATION_LERP_RATE, dt);
+            velocity
+                .0
+                .smooth_nudge(&desired, ENEMY_STEERING_LERP_RATE, dt);
         }
     }
 }

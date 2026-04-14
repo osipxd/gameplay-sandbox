@@ -46,6 +46,7 @@ fn main() {
             Update,
             (
                 player::control_player,
+                player::update_player_rotation,
                 player::shoot_system,
                 enemy::spawn_enemies,
                 enemy::enemy_follow_player,

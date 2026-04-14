@@ -53,6 +53,11 @@ fn player_enemy_separation_distance() -> f32 {
 pub fn spawn_bullet(commands: &mut Commands, translation: Vec3, velocity: Vec2, despawn_at: f64) {
     let mut bullet_translation = translation;
     bullet_translation.z = crate::BULLET_Z;
+    let bullet_rotation = if velocity == Vec2::ZERO {
+        Quat::IDENTITY
+    } else {
+        Quat::from_rotation_z(velocity.y.atan2(velocity.x))
+    };
 
     commands.spawn((
         Bullet,
@@ -60,7 +65,11 @@ pub fn spawn_bullet(commands: &mut Commands, translation: Vec3, velocity: Vec2, 
             Color::srgb(1.0, 0.9, 0.2),
             Vec2::new(BULLET_SIZE, BULLET_SIZE),
         ),
-        Transform::from_translation(bullet_translation),
+        Transform {
+            translation: bullet_translation,
+            rotation: bullet_rotation,
+            ..default()
+        },
         Velocity(velocity),
         DespawnAt(despawn_at),
     ));

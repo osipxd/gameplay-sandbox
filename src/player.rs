@@ -9,7 +9,7 @@ pub(crate) const PLAYER_SIZE: f32 = 50.0;
 const PLAYER_START_HEALTH: i32 = 5;
 const PLAYER_FIRE_RATE: f64 = 0.3;
 const BULLET_SPEED: f32 = 400.0;
-const BULLET_LIFETIME_SECS: f64 = 1.5;
+const BULLET_LIFETIME_SECS: f32 = 1.5;
 const PLAYER_INVINCIBILITY_SECS: f64 = 1.0;
 const PLAYER_ROTATION_LERP_RATE: f32 = 14.0;
 pub(crate) const PLAYER_BASE_COLOR: Color = Color::srgb(0.3, 0.7, 0.9);
@@ -147,7 +147,7 @@ pub fn shoot_system(
                 &mut commands,
                 transform.translation,
                 bullet_velocity,
-                now + BULLET_LIFETIME_SECS,
+                BULLET_LIFETIME_SECS,
             );
 
             weapon.ready_at = now + weapon.fire_rate;

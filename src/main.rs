@@ -8,6 +8,7 @@ mod enemy;
 mod game_state;
 mod movement;
 mod player;
+mod random_source;
 mod ui;
 
 use game_state::GameState;
@@ -28,7 +29,11 @@ fn main() {
         }))
         .init_state::<GameState>()
         .init_resource::<game_state::Score>()
+        .init_resource::<effects::EffectsConfigHandle>()
         .init_resource::<effects::PendingGameOver>()
+        .init_asset::<effects::EffectsConfig>()
+        .init_asset_loader::<effects::EffectsConfigLoader>()
+        .init_resource::<random_source::RandomSource>()
         .add_message::<camera::PlayerHit>()
         .add_message::<effects::EnemyDied>()
         .add_message::<effects::PlayerDied>()
@@ -37,11 +42,13 @@ fn main() {
             Startup,
             (
                 camera::spawn_camera,
+                effects::load_effects_config,
                 player::spawn_initial_player,
                 enemy::setup_enemy_spawner,
                 ui::spawn_ui,
             ),
         )
+        .add_systems(Update, effects::sync_effects_config)
         .add_systems(
             Update,
             (
@@ -58,6 +65,7 @@ fn main() {
             )
                 .chain()
                 .run_if(in_state(GameState::Playing))
+                .run_if(effects::effects_config_ready)
                 .run_if(effects::death_sequence_inactive),
         )
         .add_systems(
@@ -79,7 +87,8 @@ fn main() {
                 effects::update_death_particles,
                 effects::update_score_popups,
             )
-                .chain(),
+                .chain()
+                .run_if(effects::effects_config_ready),
         )
         .add_systems(Update, effects::finish_game_over_delay)
         .add_systems(
@@ -104,7 +113,6 @@ fn primary_window() -> Window {
     Window {
         title: "Playground".into(),
         resolution: WindowResolution::new(WIDTH, HEIGHT),
-        resizable: false,
         mode: desktop_window_mode(),
         canvas: Some("#bevy".into()),
         fit_canvas_to_parent: true,

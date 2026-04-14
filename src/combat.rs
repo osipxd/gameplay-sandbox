@@ -21,7 +21,7 @@ const PLAYER_HIT_PUSH_DISTANCE: f32 = 20.0;
 pub(crate) struct Bullet;
 
 #[derive(Component)]
-pub(crate) struct DespawnAt(f64);
+pub(crate) struct BulletLifetime(Timer);
 
 type PlayerCollisionQuery<'w, 's> = Query<
     'w,
@@ -50,7 +50,12 @@ fn player_enemy_separation_distance() -> f32 {
     (player::PLAYER_SIZE + enemy::ENEMY_SIZE) * 0.5 - PLAYER_ENEMY_SEPARATION_OVERLAP
 }
 
-pub fn spawn_bullet(commands: &mut Commands, translation: Vec3, velocity: Vec2, despawn_at: f64) {
+pub fn spawn_bullet(
+    commands: &mut Commands,
+    translation: Vec3,
+    velocity: Vec2,
+    lifetime_secs: f32,
+) {
     let mut bullet_translation = translation;
     bullet_translation.z = crate::BULLET_Z;
     let bullet_rotation = if velocity == Vec2::ZERO {
@@ -71,7 +76,7 @@ pub fn spawn_bullet(commands: &mut Commands, translation: Vec3, velocity: Vec2, 
             ..default()
         },
         Velocity(velocity),
-        DespawnAt(despawn_at),
+        BulletLifetime(Timer::from_seconds(lifetime_secs, TimerMode::Once)),
     ));
 }
 
@@ -207,12 +212,11 @@ pub fn bullet_enemy_collision(
 pub fn cleanup_bullets(
     mut commands: Commands,
     time: Res<Time>,
-    bullets: Query<(Entity, &DespawnAt)>,
+    mut bullets: Query<(Entity, &mut BulletLifetime)>,
 ) {
-    let now = time.elapsed_secs_f64();
-
-    for (entity, despawn_at) in &bullets {
-        if now >= despawn_at.0 {
+    for (entity, mut lifetime) in &mut bullets {
+        lifetime.0.tick(time.delta());
+        if lifetime.0.is_finished() {
             commands.entity(entity).despawn();
         }
     }

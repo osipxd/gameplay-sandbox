@@ -50,6 +50,9 @@ For local debugging with Bevy's extra debug feature enabled:
 cargo dev-run
 ```
 
+This dev command also enables Bevy's asset file watcher, so supported asset changes
+hot-reload while the desktop game is running. Right now that includes `assets/effects.ron`.
+
 ## Running in the browser
 
 Install the required wasm tooling once:
@@ -82,6 +85,7 @@ Then open [http://localhost:8000](http://localhost:8000).
 - `enemy.rs` – enemy spawning and steering
 - `combat.rs` – bullets, collisions, cleanup
 - `effects.rs` – death particles, score popups, death sequence timing
+- `assets/effects.ron` – hot-reloadable effect tuning for particles and score popups
 - `movement.rs` – shared velocity-based movement
 - `ui.rs` – HUD and Game Over overlay
 - `web/index.html` – landing page, controls, and project overview

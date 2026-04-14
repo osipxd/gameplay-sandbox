@@ -1,0 +1,71 @@
+(
+    death_particles: (
+        core_grid_size: 3,
+        extra_count: (
+            value: 15,
+            jitter: 3,
+        ),
+        extra_size_factor: (
+            value: 0.5,
+            jitter_pct: 0.3,
+        ),
+        impact_bias: 0.85,
+        fade_pct: 0.3,
+        velocity_retention_per_sec: 0.55,
+        large: (
+            speed: (
+                value: 348.5,
+                jitter_pct: 0.3,
+            ),
+            ttl_secs: (
+                value: 0.3472,
+                jitter_pct: 0.1,
+            ),
+            brightness: 1.15,
+            direction_jitter: 0.18,
+            end_scale: (
+                value: 0.7,
+                jitter_pct: 0.05,
+            ),
+        ),
+        small: (
+            speed: (
+                value: 487.9,
+                jitter_pct: 0.3,
+            ),
+            ttl_secs: (
+                value: 0.24304,
+                jitter_pct: 0.1,
+            ),
+            brightness: 1.35,
+            direction_jitter: 0.12,
+            end_scale: (
+                value: 0.49,
+                jitter_pct: 0.14,
+            ),
+        ),
+    ),
+    score_popup: (
+        drift_x: (
+            value: 0.0,
+            jitter: 18.0,
+        ),
+        rise: (
+            value: 75.0,
+            jitter_pct: 0.15,
+        ),
+        lifetime_secs: 0.45,
+        fade_pct: 0.27,
+        scale_overshoot_pct: 0.05,
+        end_scale: 1.05,
+        color: (
+            red: 0.98,
+            green: 0.68,
+            blue: 0.18,
+            alpha: 1.0,
+        ),
+    ),
+    player_death: (
+        extra_game_over_delay_secs: 0.08,
+    ),
+)

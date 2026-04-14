@@ -1,9 +1,12 @@
-use bevy::window::PrimaryWindow;
 use bevy::{math::StableInterpolate, prelude::*};
+use rand::Rng;
+use std::f32::consts::TAU;
 
+use crate::camera::GameCamera;
 use crate::game_state::RestartGame;
 use crate::movement::{self, Velocity};
 use crate::player::Player;
+use crate::random_source::RandomSource;
 
 const ENEMY_SPEED: f32 = 120.0;
 const ENEMY_STEERING_LERP_RATE: f32 = 6.0;
@@ -65,9 +68,10 @@ pub fn spawn_enemies(
     mut commands: Commands,
     time: Res<Time>,
     mut spawner: ResMut<EnemySpawner>,
-    window_query: Query<&Window, With<PrimaryWindow>>,
+    mut rng: ResMut<RandomSource>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<GameCamera>>,
 ) {
-    let Ok(window) = window_query.single() else {
+    let Ok((camera, camera_transform)) = camera_query.single() else {
         return;
     };
 
@@ -79,36 +83,55 @@ pub fn spawn_enemies(
 
     spawner.next_spawn_at = now + spawner.interval;
 
-    let half_width = window.width() / 2.0;
-    let half_height = window.height() / 2.0;
-    let t = now as f32;
-    let side = t as i32 % 4;
-
-    let (x, y) = match side {
-        0 => {
-            let x = (t * 1.3).sin() * half_width;
-            (x, half_height + ENEMY_SPAWN_MARGIN)
-        }
-        1 => {
-            let x = (t * 1.7).sin() * half_width;
-            (x, -half_height - ENEMY_SPAWN_MARGIN)
-        }
-        2 => {
-            let y = (t * 1.5).cos() * half_height;
-            (-half_width - ENEMY_SPAWN_MARGIN, y)
-        }
-        _ => {
-            let y = (t * 1.9).cos() * half_height;
-            (half_width + ENEMY_SPAWN_MARGIN, y)
-        }
+    let Some(view_rect) = camera_world_view_rect(camera, camera_transform) else {
+        return;
     };
+
+    let direction = Vec2::from_angle(rng.0.random_range(0.0..TAU));
+    let spawn_position = spawn_position_from_direction(direction, view_rect, ENEMY_SPAWN_MARGIN);
 
     commands.spawn((
         Enemy,
         Sprite::from_color(ENEMY_BASE_COLOR, Vec2::new(ENEMY_SIZE, ENEMY_SIZE)),
-        Transform::from_xyz(x, y, crate::ENEMY_Z),
+        Transform::from_translation(spawn_position.extend(crate::ENEMY_Z)),
         Velocity(Vec2::ZERO),
     ));
+}
+
+fn camera_world_view_rect(camera: &Camera, camera_transform: &GlobalTransform) -> Option<Rect> {
+    let viewport = camera.logical_viewport_rect()?;
+    let top_left = camera
+        .viewport_to_world_2d(camera_transform, viewport.min)
+        .ok()?;
+    let bottom_right = camera
+        .viewport_to_world_2d(camera_transform, viewport.max)
+        .ok()?;
+
+    Some(Rect {
+        min: top_left.min(bottom_right),
+        max: top_left.max(bottom_right),
+    })
+}
+
+fn spawn_position_from_direction(direction: Vec2, view_rect: Rect, margin: f32) -> Vec2 {
+    let dir = direction.normalize_or_zero();
+    let expanded_view = view_rect.inflate(margin);
+    let center = expanded_view.center();
+    let half_size = expanded_view.half_size();
+    let max_x = half_size.x;
+    let max_y = half_size.y;
+    let scale_x = if dir.x.abs() > f32::EPSILON {
+        max_x / dir.x.abs()
+    } else {
+        f32::INFINITY
+    };
+    let scale_y = if dir.y.abs() > f32::EPSILON {
+        max_y / dir.y.abs()
+    } else {
+        f32::INFINITY
+    };
+
+    center + dir * scale_x.min(scale_y)
 }
 
 pub fn separate_enemies(time: Res<Time>, mut enemies: EnemyVelocityQuery) {

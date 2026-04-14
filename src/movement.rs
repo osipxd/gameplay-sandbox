@@ -1,7 +1,16 @@
-use bevy::prelude::*;
+use bevy::{math::StableInterpolate, prelude::*};
+
+#[derive(Component, Default, Debug, Clone, Copy)]
+pub struct InputVelocity(pub Vec2);
 
 #[derive(Component, Default, Debug, Clone, Copy)]
 pub struct Velocity(pub Vec2);
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Impulse {
+    pub value: Vec2,
+    pub damping_rate: f32,
+}
 
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PhysicalTranslation(pub Vec3);
@@ -25,6 +34,19 @@ impl KinematicBodyBundle {
             previous_physical_translation: PreviousPhysicalTranslation(translation),
             velocity: Velocity(velocity),
         }
+    }
+}
+
+impl Impulse {
+    pub fn new(damping_rate: f32) -> Self {
+        Self {
+            value: Vec2::ZERO,
+            damping_rate,
+        }
+    }
+
+    pub fn add(&mut self, impulse: Vec2) {
+        self.value += impulse;
     }
 }
 
@@ -60,6 +82,21 @@ pub fn advance_physics(
     for (mut translation, mut previous_translation, velocity) in &mut query {
         previous_translation.0 = translation.0;
         translation.0 += velocity.0.extend(0.0) * time.delta_secs();
+    }
+}
+
+pub fn compose_velocity(mut query: Query<(&InputVelocity, &Impulse, &mut Velocity)>) {
+    for (input_velocity, impulse, mut velocity) in &mut query {
+        velocity.0 = input_velocity.0 + impulse.value;
+    }
+}
+
+pub fn damp_impulses(time: Res<Time<Fixed>>, mut query: Query<&mut Impulse>) {
+    let dt = time.delta_secs();
+
+    for mut impulse in &mut query {
+        let damping_rate = impulse.damping_rate;
+        impulse.value.smooth_nudge(&Vec2::ZERO, damping_rate, dt);
     }
 }
 

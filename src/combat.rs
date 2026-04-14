@@ -5,7 +5,7 @@ use crate::camera::PlayerHit;
 use crate::effects::{EnemyDied, PlayerDied};
 use crate::enemy::{self, Enemy};
 use crate::game_state::{RestartGame, Score};
-use crate::movement::{KinematicBodyBundle, PhysicalTranslation, Velocity};
+use crate::movement::{Impulse, KinematicBodyBundle, PhysicalTranslation, Velocity};
 use crate::player::{self, Health, Invincibility, Player};
 
 const BULLET_SIZE: f32 = 12.0;
@@ -15,7 +15,7 @@ const PLAYER_ENEMY_SEPARATION_ACCEL: f32 = 120.0;
 const PLAYER_ENEMY_SEPARATION_OVERLAP: f32 = 8.0;
 const PLAYER_CONTACT_PUSH_RATE: f32 = 12.0;
 const PLAYER_HIT_KNOCKBACK_SPEED: f32 = 260.0;
-const PLAYER_HIT_PUSH_DISTANCE: f32 = 20.0;
+const PLAYER_HIT_PUSH_DISTANCE: f32 = 24.0;
 const PARTICLE_SPEED_MULTIPLIER_MIN: f32 = 0.7;
 const PARTICLE_SPEED_MULTIPLIER_MAX: f32 = 1.3;
 
@@ -33,6 +33,7 @@ type PlayerCollisionQuery<'w, 's> = Query<
         &'static mut PhysicalTranslation,
         &'static mut Health,
         &'static mut Invincibility,
+        &'static mut Impulse,
     ),
     (With<Player>, Without<Enemy>),
 >;
@@ -112,7 +113,7 @@ pub fn player_enemy_collision(
 ) {
     let now = time.elapsed_secs_f64();
     let dt = time.delta_secs();
-    let Ok((player_entity, mut player_transform, mut health, mut invincibility)) =
+    let Ok((player_entity, mut player_transform, mut health, mut invincibility, mut impulse)) =
         player_query.single_mut()
     else {
         return;
@@ -153,6 +154,7 @@ pub fn player_enemy_collision(
 
             enemy_velocity.0 += push_normal * PLAYER_HIT_KNOCKBACK_SPEED;
             player_transform.0 -= push_normal.extend(0.0) * PLAYER_HIT_PUSH_DISTANCE;
+            impulse.add(-push_normal * PLAYER_HIT_KNOCKBACK_SPEED);
 
             can_take_damage = false;
 

@@ -58,7 +58,9 @@ fn main() {
                 enemy::spawn_enemies,
                 enemy::enemy_follow_player,
                 enemy::separate_enemies,
+                movement::compose_velocity,
                 movement::advance_physics,
+                movement::damp_impulses,
                 combat::cleanup_bullets,
                 combat::bullet_enemy_collision,
                 combat::player_enemy_collision,
@@ -77,7 +79,7 @@ fn main() {
         .add_systems(
             Update,
             (
-                player::update_player_rotation,
+                player::update_player_visuals,
                 player::update_invincibility_visuals,
                 ui::update_hp_text,
                 ui::update_score_text,

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy::window::WindowResolution;
+use bevy::window::{MonitorSelection, WindowMode, WindowResolution};
 
 mod camera;
 mod combat;
@@ -23,14 +23,7 @@ pub(crate) const SCORE_POPUP_Z: f32 = 2.0;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Playground".into(),
-                resolution: WindowResolution::new(WIDTH, HEIGHT),
-                resizable: false,
-                canvas: Some("#bevy".into()),
-                fit_canvas_to_parent: true,
-                ..default()
-            }),
+            primary_window: Some(primary_window()),
             ..default()
         }))
         .init_state::<GameState>()
@@ -104,4 +97,24 @@ fn main() {
                 .run_if(in_state(GameState::GameOver)),
         )
         .run();
+}
+
+fn primary_window() -> Window {
+    Window {
+        title: "Playground".into(),
+        resolution: WindowResolution::new(WIDTH, HEIGHT),
+        resizable: false,
+        mode: desktop_window_mode(),
+        canvas: Some("#bevy".into()),
+        fit_canvas_to_parent: true,
+        ..default()
+    }
+}
+
+fn desktop_window_mode() -> WindowMode {
+    if cfg!(target_arch = "wasm32") {
+        WindowMode::Windowed
+    } else {
+        WindowMode::BorderlessFullscreen(MonitorSelection::Primary)
+    }
 }

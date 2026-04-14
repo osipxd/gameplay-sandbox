@@ -5,7 +5,7 @@ use crate::camera::PlayerHit;
 use crate::effects::{EnemyDied, PlayerDied};
 use crate::enemy::{self, Enemy};
 use crate::game_state::{RestartGame, Score};
-use crate::movement::Velocity;
+use crate::movement::{KinematicBodyBundle, PhysicalTranslation, Velocity};
 use crate::player::{self, Health, Invincibility, Player};
 
 const BULLET_SIZE: f32 = 12.0;
@@ -28,15 +28,19 @@ type PlayerCollisionQuery<'w, 's> = Query<
     's,
     (
         Entity,
-        &'static mut Transform,
+        &'static mut PhysicalTranslation,
         &'static mut Health,
         &'static mut Invincibility,
     ),
     (With<Player>, Without<Enemy>),
 >;
 
-type EnemyCollisionQuery<'w, 's> =
-    Query<'w, 's, (&'static Transform, &'static mut Velocity), (With<Enemy>, Without<Player>)>;
+type EnemyCollisionQuery<'w, 's> = Query<
+    'w,
+    's,
+    (&'static PhysicalTranslation, &'static mut Velocity),
+    (With<Enemy>, Without<Player>),
+>;
 
 fn bullet_enemy_hit_distance() -> f32 {
     (BULLET_SIZE + enemy::ENEMY_SIZE) * 0.5 * BULLET_ENEMY_HITBOX_SCALE
@@ -70,12 +74,14 @@ pub fn spawn_bullet(
             Color::srgb(1.0, 0.9, 0.2),
             Vec2::new(BULLET_SIZE, BULLET_SIZE),
         ),
-        Transform {
-            translation: bullet_translation,
-            rotation: bullet_rotation,
-            ..default()
+        KinematicBodyBundle {
+            transform: Transform {
+                translation: bullet_translation,
+                rotation: bullet_rotation,
+                ..default()
+            },
+            ..KinematicBodyBundle::new(bullet_translation, velocity)
         },
-        Velocity(velocity),
         BulletLifetime(Timer::from_seconds(lifetime_secs, TimerMode::Once)),
     ));
 }
@@ -114,7 +120,7 @@ pub fn player_enemy_collision(
     let separation_distance = player_enemy_separation_distance();
 
     for (enemy_transform, mut enemy_velocity) in &mut enemies {
-        let push_dir = (enemy_transform.translation - player_transform.translation).truncate();
+        let push_dir = (enemy_transform.0 - player_transform.0).truncate();
         let distance = push_dir.length();
 
         if distance > 0.0 && distance < separation_distance {
@@ -124,7 +130,7 @@ pub fn player_enemy_collision(
             let player_push = overlap * PLAYER_CONTACT_PUSH_RATE * dt;
 
             enemy_velocity.0 += push_normal * enemy_push;
-            player_transform.translation -= push_normal.extend(0.0) * player_push;
+            player_transform.0 -= push_normal.extend(0.0) * player_push;
         }
 
         if can_take_damage && distance < player_enemy_hit_distance() {
@@ -135,7 +141,7 @@ pub fn player_enemy_collision(
             if health.0 <= 0 {
                 health.0 = 0;
                 player_died_events.write(PlayerDied {
-                    translation: player_transform.translation,
+                    translation: player_transform.0,
                     burst_direction: Vec2::ZERO,
                 });
                 commands.entity(player_entity).despawn();
@@ -144,7 +150,7 @@ pub fn player_enemy_collision(
             }
 
             enemy_velocity.0 += push_normal * PLAYER_HIT_KNOCKBACK_SPEED;
-            player_transform.translation -= push_normal.extend(0.0) * PLAYER_HIT_PUSH_DISTANCE;
+            player_transform.0 -= push_normal.extend(0.0) * PLAYER_HIT_PUSH_DISTANCE;
 
             can_take_damage = false;
 
@@ -157,8 +163,8 @@ pub fn player_enemy_collision(
 
 pub fn bullet_enemy_collision(
     mut commands: Commands,
-    bullets: Query<(Entity, &Transform, &Velocity), With<Bullet>>,
-    enemies: Query<(Entity, &Transform), With<Enemy>>,
+    bullets: Query<(Entity, &PhysicalTranslation, &Velocity), With<Bullet>>,
+    enemies: Query<(Entity, &PhysicalTranslation), With<Enemy>>,
     mut enemy_died_events: MessageWriter<EnemyDied>,
     mut score: ResMut<Score>,
 ) {
@@ -177,9 +183,9 @@ pub fn bullet_enemy_collision(
             }
 
             let distance = bullet_transform
-                .translation
+                .0
                 .truncate()
-                .distance(enemy_transform.translation.truncate());
+                .distance(enemy_transform.0.truncate());
 
             if distance < bullet_enemy_hit_distance() {
                 hit_bullets.insert(bullet_entity);
@@ -197,7 +203,7 @@ pub fn bullet_enemy_collision(
     for enemy_entity in hit_enemies {
         if let Ok((_, enemy_transform)) = enemies.get(enemy_entity) {
             enemy_died_events.write(EnemyDied {
-                translation: enemy_transform.translation,
+                translation: enemy_transform.0,
                 burst_direction: enemy_burst_directions
                     .get(&enemy_entity)
                     .copied()

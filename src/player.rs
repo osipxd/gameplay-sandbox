@@ -2,7 +2,7 @@ use bevy::{math::StableInterpolate, prelude::*};
 
 use crate::combat;
 use crate::game_state::RestartGame;
-use crate::movement::Velocity;
+use crate::movement::{KinematicBodyBundle, PhysicalTranslation, Velocity};
 
 const PLAYER_SPEED: f32 = 200.0;
 pub(crate) const PLAYER_SIZE: f32 = 50.0;
@@ -37,8 +37,7 @@ pub struct Weapon {
 struct PlayerBundle {
     player: Player,
     sprite: Sprite,
-    transform: Transform,
-    velocity: Velocity,
+    body: KinematicBodyBundle,
     weapon: Weapon,
     health: Health,
     invincibility: Invincibility,
@@ -49,8 +48,7 @@ impl PlayerBundle {
         Self {
             player: Player,
             sprite: Sprite::from_color(PLAYER_BASE_COLOR, Vec2::new(PLAYER_SIZE, PLAYER_SIZE)),
-            transform: Transform::from_xyz(0.0, 0.0, crate::PLAYER_Z),
-            velocity: Velocity::default(),
+            body: KinematicBodyBundle::new(Vec3::new(0.0, 0.0, crate::PLAYER_Z), Vec2::ZERO),
             weapon: Weapon::new(PLAYER_FIRE_RATE),
             health: Health(PLAYER_START_HEALTH),
             invincibility: Invincibility::default(),
@@ -134,18 +132,18 @@ pub fn shoot_system(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut query: Query<(&Transform, &Velocity, &mut Weapon), With<Player>>,
+    mut query: Query<(&PhysicalTranslation, &Velocity, &mut Weapon), With<Player>>,
 ) {
     let now = time.elapsed_secs_f64();
     let bullet_dir = shooting_input_direction(&keyboard);
 
-    for (transform, player_velocity, mut weapon) in &mut query {
+    for (translation, player_velocity, mut weapon) in &mut query {
         if bullet_dir != Vec2::ZERO && now >= weapon.ready_at {
             let bullet_velocity = bullet_dir * BULLET_SPEED + player_velocity.0;
 
             combat::spawn_bullet(
                 &mut commands,
-                transform.translation,
+                translation.0,
                 bullet_velocity,
                 BULLET_LIFETIME_SECS,
             );

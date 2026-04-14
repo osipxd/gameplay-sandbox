@@ -27,6 +27,7 @@ fn main() {
             primary_window: Some(primary_window()),
             ..default()
         }))
+        .insert_resource(Time::<Fixed>::from_hz(60.0))
         .init_state::<GameState>()
         .init_resource::<game_state::Score>()
         .init_resource::<effects::EffectsConfigHandle>()
@@ -50,15 +51,14 @@ fn main() {
         )
         .add_systems(Update, effects::sync_effects_config)
         .add_systems(
-            Update,
+            FixedUpdate,
             (
                 player::control_player,
-                player::update_player_rotation,
                 player::shoot_system,
                 enemy::spawn_enemies,
                 enemy::enemy_follow_player,
                 enemy::separate_enemies,
-                movement::apply_velocity,
+                movement::advance_physics,
                 combat::cleanup_bullets,
                 combat::bullet_enemy_collision,
                 combat::player_enemy_collision,
@@ -69,8 +69,15 @@ fn main() {
                 .run_if(effects::death_sequence_inactive),
         )
         .add_systems(
+            RunFixedMainLoop,
+            movement::interpolate_transforms
+                .in_set(RunFixedMainLoopSystems::AfterFixedMainLoop)
+                .run_if(effects::effects_config_ready),
+        )
+        .add_systems(
             Update,
             (
+                player::update_player_rotation,
                 player::update_invincibility_visuals,
                 ui::update_hp_text,
                 ui::update_score_text,

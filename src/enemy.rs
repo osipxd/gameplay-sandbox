@@ -4,7 +4,7 @@ use std::f32::consts::TAU;
 
 use crate::camera::GameCamera;
 use crate::game_state::RestartGame;
-use crate::movement::{self, Velocity};
+use crate::movement::{self, KinematicBodyBundle, PhysicalTranslation, Velocity};
 use crate::player::Player;
 use crate::random_source::RandomSource;
 
@@ -19,8 +19,12 @@ const ENEMY_SEPARATION_DISTANCE: f32 = ENEMY_SIZE + ENEMY_SEPARATION_GAP;
 const ENEMY_SPAWN_GAP: f32 = 30.0;
 const ENEMY_SPAWN_MARGIN: f32 = ENEMY_SIZE * 0.5 + ENEMY_SPAWN_GAP;
 
-type EnemyVelocityQuery<'w, 's> =
-    Query<'w, 's, (&'static Transform, &'static mut Velocity), (With<Enemy>, Without<Player>)>;
+type EnemyVelocityQuery<'w, 's> = Query<
+    'w,
+    's,
+    (&'static PhysicalTranslation, &'static mut Velocity),
+    (With<Enemy>, Without<Player>),
+>;
 
 #[derive(Component)]
 pub struct Enemy;
@@ -93,8 +97,7 @@ pub fn spawn_enemies(
     commands.spawn((
         Enemy,
         Sprite::from_color(ENEMY_BASE_COLOR, Vec2::new(ENEMY_SIZE, ENEMY_SIZE)),
-        Transform::from_translation(spawn_position.extend(crate::ENEMY_Z)),
-        Velocity(Vec2::ZERO),
+        KinematicBodyBundle::new(spawn_position.extend(crate::ENEMY_Z), Vec2::ZERO),
     ));
 }
 
@@ -142,9 +145,9 @@ pub fn separate_enemies(time: Res<Time>, mut enemies: EnemyVelocityQuery) {
         combinations.fetch_next()
     {
         movement::apply_separation(
-            transform_a.translation,
+            transform_a.0,
             &mut velocity_a,
-            transform_b.translation,
+            transform_b.0,
             &mut velocity_b,
             ENEMY_SEPARATION_DISTANCE,
             ENEMY_SEPARATION_ACCEL,
@@ -155,16 +158,16 @@ pub fn separate_enemies(time: Res<Time>, mut enemies: EnemyVelocityQuery) {
 
 pub fn enemy_follow_player(
     time: Res<Time>,
-    mut enemies: Query<(&mut Transform, &mut Velocity), With<Enemy>>,
-    player: Query<&Transform, (With<Player>, Without<Enemy>)>,
+    mut enemies: Query<(&mut Transform, &PhysicalTranslation, &mut Velocity), With<Enemy>>,
+    player: Query<&PhysicalTranslation, (With<Player>, Without<Enemy>)>,
 ) {
     let dt = time.delta_secs();
     let Ok(player_transform) = player.single() else {
         return;
     };
 
-    for (mut enemy_transform, mut velocity) in &mut enemies {
-        let dir = (player_transform.translation - enemy_transform.translation).truncate();
+    for (mut enemy_transform, enemy_translation, mut velocity) in &mut enemies {
+        let dir = (player_transform.0 - enemy_translation.0).truncate();
 
         if dir.length() > 0.0 {
             let desired = dir.normalize() * ENEMY_SPEED;

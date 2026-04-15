@@ -1,0 +1,11 @@
+{$SITE_ADDRESS::80}
+
+root * /srv
+encode zstd gzip
+
+@static {
+    path *.js *.wasm *.css *.ron *.ttf
+}
+header @static Cache-Control "public, max-age=3600"
+
+file_server

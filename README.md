@@ -80,6 +80,67 @@ Serve it locally:
 
 Then open [http://localhost:8000](http://localhost:8000).
 
+## Docker deployment
+
+Build the production image:
+
+```bash
+docker build -t gameplay-sandbox:latest .
+```
+
+Run it with Caddy serving the generated static site:
+
+```bash
+docker run --rm -p 8080:80 gameplay-sandbox:latest
+```
+
+Then open [http://localhost:8080](http://localhost:8080).
+
+The container uses a multi-stage build:
+- Rust builder stage compiles the wasm bundle with `./scripts/build-web.sh release`
+- final `caddy:alpine` stage serves `web/` as static files
+
+Deployment files:
+- `Dockerfile` – multi-stage web build + minimal runtime image
+- `Caddyfile` – static site config with compression and light caching
+- `.dockerignore` – trims the Docker build context
+
+## GitHub Container Registry
+
+Publishing to GHCR is handled by [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml).
+
+It runs when you push a git tag matching `v*`, logs in with the repository `GITHUB_TOKEN`, and publishes:
+- `ghcr.io/osipxd/gameplay-sandbox:<version>`
+- `ghcr.io/osipxd/gameplay-sandbox:latest`
+
+Example:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+For a real server with a domain, Caddy can obtain and renew Let's Encrypt certificates automatically.
+Run the same image with the site address set to your domain, publish ports `80` and `443`, and persist
+Caddy state so certificates survive restarts:
+
+```bash
+docker run -d \
+  --name gameplay-sandbox \
+  -e SITE_ADDRESS=game.example.com \
+  -p 80:80 \
+  -p 443:443 \
+  -v caddy_data:/data \
+  -v caddy_config:/config \
+  ghcr.io/osipxd/gameplay-sandbox:latest
+```
+
+When `SITE_ADDRESS` is a real public domain name, Caddy will switch from plain HTTP to automatic HTTPS.
+Requirements:
+- the domain must resolve to your server
+- ports `80` and `443` must be reachable from the internet
+- keep `/data` and `/config` persisted for certificate reuse
+
 ## Project Structure
 
 - `main.rs` – app wiring and schedule setup
@@ -93,6 +154,7 @@ Then open [http://localhost:8000](http://localhost:8000).
 - `movement.rs` – shared velocity-based movement
 - `textures.rs` – generated textures for entity faces and the screen vignette
 - `ui.rs` – HUD, Game Over overlay, and shared UI font resource
+- `.github/workflows/publish-image.yml` – tag-driven GHCR publish workflow
 - `web/index.html` – landing page, controls, and project overview
 - `web/play.html` – in-browser game page
 - `web/style.css` – shared site styles

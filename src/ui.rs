@@ -1,11 +1,8 @@
-use bevy::{
-    asset::RenderAssetUsages,
-    prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
-};
+use bevy::prelude::*;
 
 use crate::game_state::{GameState, RestartGame, Score};
 use crate::player::{Health, Player};
+use crate::textures::GeneratedTextures;
 
 const UI_FONT_PATH: &str = "fonts/Inter.ttf";
 const POPUP_FONT_PATH: &str = "fonts/JetBrainsMono.ttf";
@@ -15,11 +12,6 @@ const GAME_OVER_TITLE: &str = "Game Over";
 const RESTART_BUTTON_LABEL: &str = "Restart";
 const HP_LABEL_PREFIX: &str = "HP";
 const SCORE_LABEL_PREFIX: &str = "Score";
-const VIGNETTE_TEXTURE_SIZE: u32 = 256;
-const VIGNETTE_BORDER_PX: f32 = 40.0;
-const VIGNETTE_INNER_RADIUS: f32 = 0.55;
-const VIGNETTE_MAX_ALPHA: f32 = 0.14;
-
 #[derive(Resource, Clone)]
 pub(crate) struct UiFonts {
     ui: Handle<Font>,
@@ -79,8 +71,18 @@ impl UiFonts {
     }
 }
 
-pub fn spawn_ui(mut commands: Commands, fonts: Res<UiFonts>, mut images: ResMut<Assets<Image>>) {
-    spawn_vignette_overlay(&mut commands, &mut images);
+pub fn spawn_ui(mut commands: Commands, fonts: Res<UiFonts>, textures: Res<GeneratedTextures>) {
+    commands.spawn((
+        textures.vignette_node(),
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            position_type: PositionType::Absolute,
+            left: Val::Px(0.0),
+            top: Val::Px(0.0),
+            ..default()
+        },
+    ));
 
     commands.spawn((
         HpText,
@@ -168,60 +170,6 @@ pub fn update_hp_text(
     for mut text in &mut hp_text_query {
         text.0 = hp_label.clone();
     }
-}
-
-fn create_vignette_image() -> Image {
-    let mut image = Image::new_fill(
-        Extent3d {
-            width: VIGNETTE_TEXTURE_SIZE,
-            height: VIGNETTE_TEXTURE_SIZE,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        &[0, 0, 0, 0],
-        TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
-    );
-
-    let texture_size = VIGNETTE_TEXTURE_SIZE as f32;
-    let half_diagonal = 2.0_f32.sqrt();
-
-    for y in 0..VIGNETTE_TEXTURE_SIZE {
-        for x in 0..VIGNETTE_TEXTURE_SIZE {
-            let normalized_x = ((x as f32 + 0.5) / texture_size) * 2.0 - 1.0;
-            let normalized_y = ((y as f32 + 0.5) / texture_size) * 2.0 - 1.0;
-            let distance = Vec2::new(normalized_x, normalized_y).length() / half_diagonal;
-            let edge_factor = ((distance - VIGNETTE_INNER_RADIUS) / (1.0 - VIGNETTE_INNER_RADIUS))
-                .clamp(0.0, 1.0);
-            let eased_edge = EaseFunction::SmootherStep.sample_clamped(edge_factor);
-            let alpha = eased_edge * VIGNETTE_MAX_ALPHA;
-
-            if let Some(pixel) = image.pixel_bytes_mut(UVec3::new(x, y, 0)) {
-                pixel[3] = (alpha * u8::MAX as f32) as u8;
-            }
-        }
-    }
-
-    image
-}
-
-fn spawn_vignette_overlay(commands: &mut Commands, images: &mut Assets<Image>) {
-    let vignette = images.add(create_vignette_image());
-
-    commands.spawn((
-        ImageNode::new(vignette).with_mode(NodeImageMode::Sliced(TextureSlicer {
-            border: BorderRect::all(VIGNETTE_BORDER_PX),
-            ..default()
-        })),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            ..default()
-        },
-    ));
 }
 
 pub fn update_score_text(

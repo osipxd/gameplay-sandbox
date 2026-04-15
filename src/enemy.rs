@@ -7,6 +7,7 @@ use crate::game_state::RestartGame;
 use crate::movement::{self, KinematicBodyBundle, PhysicalTranslation, Velocity};
 use crate::player::Player;
 use crate::random_source::RandomSource;
+use crate::textures::GeneratedTextures;
 
 const ENEMY_SPEED: f32 = 120.0;
 const ENEMY_STEERING_LERP_RATE: f32 = 6.0;
@@ -73,6 +74,7 @@ pub fn spawn_enemies(
     time: Res<Time>,
     mut spawner: ResMut<EnemySpawner>,
     mut rng: ResMut<RandomSource>,
+    textures: Res<GeneratedTextures>,
     camera_query: Query<(&Camera, &GlobalTransform), With<GameCamera>>,
 ) {
     let Ok((camera, camera_transform)) = camera_query.single() else {
@@ -96,7 +98,7 @@ pub fn spawn_enemies(
 
     commands.spawn((
         Enemy,
-        Sprite::from_color(ENEMY_BASE_COLOR, Vec2::new(ENEMY_SIZE, ENEMY_SIZE)),
+        textures.face_sprite(ENEMY_SIZE, ENEMY_BASE_COLOR),
         KinematicBodyBundle::new(spawn_position.extend(crate::ENEMY_Z), Vec2::ZERO),
     ));
 }

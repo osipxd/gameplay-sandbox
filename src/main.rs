@@ -9,6 +9,7 @@ mod game_state;
 mod movement;
 mod player;
 mod random_source;
+mod textures;
 mod ui;
 
 use game_state::GameState;
@@ -35,6 +36,7 @@ fn main() {
         .init_asset::<effects::EffectsConfig>()
         .init_asset_loader::<effects::EffectsConfigLoader>()
         .init_resource::<random_source::RandomSource>()
+        .init_resource::<textures::GeneratedTextures>()
         .init_resource::<ui::UiFonts>()
         .add_message::<camera::PlayerHit>()
         .add_message::<effects::EnemyDied>()

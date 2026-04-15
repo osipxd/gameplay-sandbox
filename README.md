@@ -9,6 +9,7 @@ This project is a personal playground to explore game development concepts:
 - game states
 - UI overlays
 - lightweight gameplay juice and feedback
+- procedural textures and variable-font text styling
 
 ## Features
 
@@ -25,6 +26,9 @@ This project is a personal playground to explore game development concepts:
 - Game Over screen with restart button
 - HUD with HP and score
 - Score tracking and reset on restart
+- Procedural face textures for player and enemies
+- Screen-space vignette overlay
+- Variable fonts: Inter for UI, JetBrains Mono for score popups
 
 ## Controls
 
@@ -87,7 +91,8 @@ Then open [http://localhost:8000](http://localhost:8000).
 - `effects.rs` – death particles, score popups, death sequence timing
 - `assets/effects.ron` – hot-reloadable effect tuning for particles and score popups
 - `movement.rs` – shared velocity-based movement
-- `ui.rs` – HUD and Game Over overlay
+- `textures.rs` – generated textures for entity faces and the screen vignette
+- `ui.rs` – HUD, Game Over overlay, and shared UI font resource
 - `web/index.html` – landing page, controls, and project overview
 - `web/play.html` – in-browser game page
 - `web/style.css` – shared site styles

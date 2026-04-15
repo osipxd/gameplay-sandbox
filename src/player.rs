@@ -3,6 +3,7 @@ use bevy::{color::Mix, math::StableInterpolate, prelude::*};
 use crate::combat;
 use crate::game_state::RestartGame;
 use crate::movement::{Impulse, InputVelocity, KinematicBodyBundle, PhysicalTranslation};
+use crate::textures::GeneratedTextures;
 
 const PLAYER_SPEED: f32 = 200.0;
 pub(crate) const PLAYER_SIZE: f32 = 50.0;
@@ -74,10 +75,10 @@ struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    fn new() -> Self {
+    fn new(textures: &GeneratedTextures) -> Self {
         Self {
             player: Player,
-            sprite: Sprite::from_color(PLAYER_BASE_COLOR, Vec2::new(PLAYER_SIZE, PLAYER_SIZE)),
+            sprite: textures.face_sprite(PLAYER_SIZE, PLAYER_BASE_COLOR),
             body: KinematicBodyBundle::new(Vec3::new(0.0, 0.0, crate::PLAYER_Z), Vec2::ZERO),
             input_velocity: InputVelocity::default(),
             weapon: Weapon::new(PLAYER_FIRE_RATE_SECS),
@@ -183,12 +184,13 @@ impl ShootSquash {
     }
 }
 
-pub fn spawn_initial_player(mut commands: Commands) {
-    spawn_player(&mut commands);
+pub fn spawn_initial_player(mut commands: Commands, textures: Res<GeneratedTextures>) {
+    spawn_player(&mut commands, &textures);
 }
 
 pub fn restart_player_on_restart(
     mut commands: Commands,
+    textures: Res<GeneratedTextures>,
     players: Query<Entity, With<Player>>,
     mut restart_requests: MessageReader<RestartGame>,
 ) {
@@ -200,11 +202,11 @@ pub fn restart_player_on_restart(
         commands.entity(entity).despawn();
     }
 
-    spawn_player(&mut commands);
+    spawn_player(&mut commands, &textures);
 }
 
-pub fn spawn_player(commands: &mut Commands) {
-    commands.spawn(PlayerBundle::new());
+pub fn spawn_player(commands: &mut Commands, textures: &GeneratedTextures) {
+    commands.spawn(PlayerBundle::new(textures));
 }
 
 pub fn control_player(

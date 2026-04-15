@@ -8,7 +8,7 @@ mod enemy;
 mod game_state;
 mod movement;
 mod player;
-mod random_source;
+mod random;
 mod textures;
 mod ui;
 
@@ -31,11 +31,12 @@ fn main() {
         .insert_resource(Time::<Fixed>::from_hz(60.0))
         .init_state::<GameState>()
         .init_resource::<game_state::Score>()
+        .init_resource::<enemy::EnemySpawner>()
         .init_resource::<effects::EffectsConfigHandle>()
         .init_resource::<effects::PendingGameOver>()
         .init_asset::<effects::EffectsConfig>()
         .init_asset_loader::<effects::EffectsConfigLoader>()
-        .init_resource::<random_source::RandomSource>()
+        .init_resource::<random::RandomSource>()
         .init_resource::<textures::GeneratedTextures>()
         .init_resource::<ui::UiFonts>()
         .add_message::<camera::PlayerHit>()
@@ -48,7 +49,6 @@ fn main() {
                 camera::spawn_camera,
                 effects::load_effects_config,
                 player::spawn_initial_player,
-                enemy::setup_enemy_spawner,
                 ui::spawn_ui,
             ),
         )

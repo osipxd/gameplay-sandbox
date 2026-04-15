@@ -11,7 +11,7 @@ use thiserror::Error;
 use crate::enemy;
 use crate::game_state::{GameState, RestartGame};
 use crate::player;
-use crate::random_source::RandomSource;
+use crate::random::{RandomSource, WithJitter, WithJitterPct};
 use crate::ui;
 
 const EFFECTS_CONFIG_PATH: &str = "effects.ron";
@@ -74,18 +74,6 @@ pub struct ColorConfig {
     pub green: f32,
     pub blue: f32,
     pub alpha: f32,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct WithJitter<T> {
-    pub value: T,
-    pub jitter: T,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct WithJitterPct {
-    pub value: f32,
-    pub jitter_pct: f32,
 }
 
 #[derive(Resource, Default)]
@@ -246,31 +234,6 @@ impl EffectsConfig {
     }
 }
 
-impl WithJitter<usize> {
-    fn sample(&self, rng: &mut RandomSource) -> usize {
-        let min = self.value.saturating_sub(self.jitter);
-        let max = self.value + self.jitter;
-        rng.0.random_range(min..=max)
-    }
-}
-
-impl WithJitter<f32> {
-    fn sample(&self, rng: &mut RandomSource) -> f32 {
-        rng.0
-            .random_range((self.value - self.jitter)..=(self.value + self.jitter))
-    }
-}
-
-impl WithJitterPct {
-    fn sample(&self, rng: &mut RandomSource) -> f32 {
-        sample_pct(rng, self.value, self.jitter_pct)
-    }
-
-    fn max_value(&self) -> f32 {
-        self.value * (1.0 + self.jitter_pct)
-    }
-}
-
 pub fn effects_config_ready(config: Option<Res<EffectsConfig>>) -> bool {
     config.is_some()
 }
@@ -423,11 +386,6 @@ fn core_fragment_offset(col: usize, row: usize, source_size: f32, grid_size: usi
 
 fn angle_jitter(rng: &mut RandomSource, jitter: f32) -> f32 {
     rng.0.random_range(-jitter..=jitter)
-}
-
-fn sample_pct(rng: &mut RandomSource, value: f32, jitter_pct: f32) -> f32 {
-    let factor = rng.0.random_range((1.0 - jitter_pct)..=(1.0 + jitter_pct));
-    value * factor
 }
 
 fn extra_fragment_offset(

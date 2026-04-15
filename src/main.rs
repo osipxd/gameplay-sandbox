@@ -35,6 +35,7 @@ fn main() {
         .init_asset::<effects::EffectsConfig>()
         .init_asset_loader::<effects::EffectsConfigLoader>()
         .init_resource::<random_source::RandomSource>()
+        .init_resource::<ui::UiFonts>()
         .add_message::<camera::PlayerHit>()
         .add_message::<effects::EnemyDied>()
         .add_message::<effects::PlayerDied>()

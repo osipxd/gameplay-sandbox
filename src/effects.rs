@@ -483,12 +483,11 @@ pub fn finish_game_over_delay(
 
 pub fn spawn_enemy_death_effects(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    fonts: Res<ui::UiFonts>,
     effects_config: Res<EffectsConfig>,
     mut rng: ResMut<RandomSource>,
     mut enemy_deaths: MessageReader<EnemyDied>,
 ) {
-    let font = asset_server.load(ui::UI_FONT_PATH);
     let particle_style = ParticleStyle {
         base_color: enemy::ENEMY_BASE_COLOR,
         source_size: enemy::ENEMY_SIZE,
@@ -518,11 +517,7 @@ pub fn spawn_enemy_death_effects(
                 rise,
             },
             Text2d::new(SCORE_POPUP_TEXT),
-            TextFont {
-                font: font.clone(),
-                font_size: SCORE_POPUP_FONT_SIZE,
-                ..default()
-            },
+            fonts.popup_text(SCORE_POPUP_FONT_SIZE),
             TextColor(effects_config.score_popup.color.to_color()),
             Anchor::CENTER,
             Transform {

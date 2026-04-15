@@ -7,7 +7,8 @@ use bevy::{
 use crate::game_state::{GameState, RestartGame, Score};
 use crate::player::{Health, Player};
 
-pub(crate) const UI_FONT_PATH: &str = "fonts/FiraSans-Bold.ttf";
+const UI_FONT_PATH: &str = "fonts/Inter.ttf";
+const POPUP_FONT_PATH: &str = "fonts/JetBrainsMono.ttf";
 const INITIAL_HP_TEXT: &str = "HP: 5";
 const INITIAL_SCORE_TEXT: &str = "Score: 0";
 const GAME_OVER_TITLE: &str = "Game Over";
@@ -18,6 +19,12 @@ const VIGNETTE_TEXTURE_SIZE: u32 = 256;
 const VIGNETTE_BORDER_PX: f32 = 40.0;
 const VIGNETTE_INNER_RADIUS: f32 = 0.55;
 const VIGNETTE_MAX_ALPHA: f32 = 0.14;
+
+#[derive(Resource, Clone)]
+pub(crate) struct UiFonts {
+    ui: Handle<Font>,
+    popup: Handle<Font>,
+}
 
 #[derive(Component)]
 pub(crate) struct HpText;
@@ -38,26 +45,47 @@ type RestartButtonInteractions<'w, 's> = Query<
     (Changed<Interaction>, With<RestartButton>),
 >;
 
-fn ui_text_font(font: Handle<Font>, font_size: f32) -> TextFont {
-    TextFont {
-        font,
-        font_size,
-        ..default()
+impl FromWorld for UiFonts {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world.resource::<AssetServer>();
+
+        Self {
+            ui: asset_server.load(UI_FONT_PATH),
+            popup: asset_server.load(POPUP_FONT_PATH),
+        }
     }
 }
 
-pub fn spawn_ui(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut images: ResMut<Assets<Image>>,
-) {
-    let font = asset_server.load(UI_FONT_PATH);
+impl UiFonts {
+    fn text_font(font: Handle<Font>, font_size: f32, weight: FontWeight) -> TextFont {
+        TextFont {
+            font,
+            font_size,
+            weight,
+            ..default()
+        }
+    }
+
+    pub(crate) fn ui_text(&self, font_size: f32) -> TextFont {
+        Self::text_font(self.ui.clone(), font_size, FontWeight::MEDIUM)
+    }
+
+    pub(crate) fn ui_heading_text(&self, font_size: f32) -> TextFont {
+        Self::text_font(self.ui.clone(), font_size, FontWeight::SEMIBOLD)
+    }
+
+    pub(crate) fn popup_text(&self, font_size: f32) -> TextFont {
+        Self::text_font(self.popup.clone(), font_size, FontWeight::BOLD)
+    }
+}
+
+pub fn spawn_ui(mut commands: Commands, fonts: Res<UiFonts>, mut images: ResMut<Assets<Image>>) {
     spawn_vignette_overlay(&mut commands, &mut images);
 
     commands.spawn((
         HpText,
         Text::new(INITIAL_HP_TEXT),
-        ui_text_font(font.clone(), 30.0),
+        fonts.ui_text(30.0),
         TextColor(Color::WHITE),
         Node {
             position_type: PositionType::Absolute,
@@ -70,7 +98,7 @@ pub fn spawn_ui(
     commands.spawn((
         ScoreText,
         Text::new(INITIAL_SCORE_TEXT),
-        ui_text_font(font.clone(), 30.0),
+        fonts.ui_text(30.0),
         TextColor(Color::WHITE),
         Node {
             position_type: PositionType::Absolute,
@@ -97,7 +125,7 @@ pub fn spawn_ui(
         children![
             (
                 Text::new(GAME_OVER_TITLE),
-                ui_text_font(font.clone(), 64.0),
+                fonts.ui_heading_text(64.0),
                 TextColor(Color::WHITE),
             ),
             (
@@ -113,7 +141,7 @@ pub fn spawn_ui(
                 BackgroundColor(Color::srgb(0.2, 0.6, 0.2)),
                 children![(
                     Text::new(RESTART_BUTTON_LABEL),
-                    ui_text_font(font, 32.0),
+                    fonts.ui_heading_text(32.0),
                     TextColor(Color::WHITE),
                 )]
             )

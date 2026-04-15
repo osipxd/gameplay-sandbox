@@ -2,6 +2,9 @@
 name = "gameplay-sandbox"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/osipxd/gameplay-sandbox"
+publish = false
+license = "MIT"
 
 [features]
 bevy_debug = ["bevy/debug", "bevy/file_watcher"]

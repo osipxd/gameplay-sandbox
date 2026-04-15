@@ -105,20 +105,50 @@ Deployment files:
 - `Caddyfile` – static site config with compression and light caching
 - `.dockerignore` – trims the Docker build context
 
-## GitHub Container Registry
+## Releases
 
-Publishing to GHCR is handled by [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml).
-
-It runs when you push a git tag matching `v*`, logs in with the repository `GITHUB_TOKEN`, and publishes:
-- `ghcr.io/osipxd/gameplay-sandbox:<version>`
-- `ghcr.io/osipxd/gameplay-sandbox:latest`
-
-Example:
+Install `cargo-release` once:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+cargo install cargo-release --locked
 ```
+
+Preview the next patch release locally:
+
+```bash
+cargo release patch
+```
+
+Execute the release for real:
+
+```bash
+cargo release patch --execute
+```
+
+`cargo-release` now handles the local release flow:
+- updates `Cargo.toml`
+- finalizes the `Unreleased` section in `CHANGELOG.md`
+- creates the release commit and annotated `vX.Y.Z` tag
+- pushes the release commit and tag to `origin`
+
+Local release behavior is configured in [`release.toml`](release.toml).
+
+Use `minor`, `major`, or an explicit version instead of `patch` when needed:
+
+```bash
+cargo release minor --execute
+cargo release 0.2.0 --execute
+```
+
+The GitHub release workflow is handled by [`.github/workflows/release.yml`](.github/workflows/release.yml).
+It runs when you push a git tag matching `v*` and creates the GitHub Release from the matching `CHANGELOG.md` section.
+
+Docker image publishing is handled separately by [`.github/workflows/publish-image.yml`](.github/workflows/publish-image.yml).
+It also runs on `v*` tags and publishes the container image to GHCR.
+
+Published image tags:
+- `ghcr.io/osipxd/gameplay-sandbox:<version>`
+- `ghcr.io/osipxd/gameplay-sandbox:latest`
 
 For a real server with a domain, Caddy can obtain and renew Let's Encrypt certificates automatically.
 Run the same image with the site address set to your domain, publish ports `80` and `443`, and persist
@@ -155,6 +185,8 @@ Requirements:
 - `textures.rs` – generated textures for entity faces and the screen vignette
 - `ui.rs` – HUD, Game Over overlay, and shared UI font resource
 - `.github/workflows/publish-image.yml` – tag-driven GHCR publish workflow
+- `.github/workflows/release.yml` – tag-driven GitHub Release workflow
+- `release.toml` – local `cargo-release` configuration
 - `web/index.html` – landing page, controls, and project overview
 - `web/play.html` – in-browser game page
 - `web/style.css` – shared site styles
